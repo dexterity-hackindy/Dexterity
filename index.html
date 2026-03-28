@@ -3,286 +3,194 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ASL Translator</title>
+    <title>Dexterity — ASL Translator</title>
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg:#0a0a0f;--surface:#111118;--border:#1e1e2e;
-            --accent:#7cffd4;--accent2:#ff6b6b;--accent3:#ffd166;--accent4:#c084fc;
-            --text:#e8e8f0;--muted:#555570;--card:#13131e;
+            --bg:#050a12;--surface:#090f1a;--border:#0e2236;
+            --accent:#00d4ff;--accent2:#ff6b6b;--accent3:#ffd166;--accent4:#3b82f6;
+            --text:#ddeeff;--muted:#3a6080;--card:#080e1c;
         }
         *{box-sizing:border-box;margin:0;padding:0;}
         body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:1.5rem;overflow-x:hidden;}
-        body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 60% 40% at 20% 10%,rgba(124,255,212,.04) 0%,transparent 60%),radial-gradient(ellipse 50% 30% at 80% 80%,rgba(255,107,107,.04) 0%,transparent 60%);pointer-events:none;z-index:0;}
+        body::before{content:'';position:fixed;inset:0;background:
+                radial-gradient(ellipse 70% 50% at 15% 5%, rgba(0,180,255,.07) 0%,transparent 60%),
+                radial-gradient(ellipse 50% 40% at 85% 85%, rgba(30,80,200,.07) 0%,transparent 60%),
+                radial-gradient(ellipse 40% 30% at 50% 50%, rgba(0,100,180,.03) 0%,transparent 70%);
+            pointer-events:none;z-index:0;}
         .app{position:relative;z-index:1;max-width:1100px;margin:0 auto;}
-        header{display:flex;align-items:baseline;gap:1rem;margin-bottom:2rem;flex-wrap:wrap;}
-        header h1{font-size:28px;font-weight:800;letter-spacing:-.5px;}
-        header h1 span{color:var(--accent);}
+
+        /* ── HEADER ── */
+        header{display:flex;align-items:center;gap:1rem;margin-bottom:2rem;flex-wrap:wrap;}
+        .brand{display:flex;align-items:center;gap:12px;}
+        .brand img{height:44px;width:auto;filter:drop-shadow(0 0 8px rgba(0,212,255,.4));}
+        .brand-name{font-size:28px;font-weight:800;letter-spacing:-.5px;
+            background:linear-gradient(135deg,#00d4ff 0%,#3b82f6 100%);
+            -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
         .subtitle{font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);letter-spacing:.1em;}
         .badge{font-family:'DM Mono',monospace;font-size:10px;padding:3px 8px;border-radius:4px;}
         .badge-loading{background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.2);color:var(--accent3);}
-        .badge-ready{background:rgba(124,255,212,.08);border:1px solid rgba(124,255,212,.2);color:var(--accent);}
+        .badge-ready{background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2);color:var(--accent);}
         .badge-warn{background:rgba(255,107,107,.08);border:1px solid rgba(255,107,107,.2);color:var(--accent2);}
+
         .layout{display:grid;grid-template-columns:1fr 340px;gap:1.25rem;align-items:start;}
         .video-panel{display:flex;flex-direction:column;gap:1rem;}
         .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
         .btn{font-family:'Syne',sans-serif;font-size:13px;font-weight:600;padding:8px 18px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;transition:all .15s;letter-spacing:.03em;}
         .btn:hover{background:var(--border);}
-        .btn.primary{background:var(--accent);color:#000;border-color:var(--accent);}
-        .btn.primary:hover{background:#5de6ba;}
+        .btn.primary{background:linear-gradient(135deg,#0090c0 0%,#1a60d0 100%);color:#fff;border-color:rgba(0,212,255,.5);box-shadow:0 0 16px rgba(0,150,220,.25);}
+        .btn.primary:hover{background:linear-gradient(135deg,#00aad8 0%,#2470e8 100%);box-shadow:0 0 24px rgba(0,180,255,.35);}
         .btn.danger{border-color:rgba(255,107,107,.4);color:var(--accent2);}
         .btn.danger:hover{background:rgba(255,107,107,.1);}
-        .btn.mode-num{background:rgba(192,132,252,.15);border-color:var(--accent4);color:var(--accent4);}
+        .btn.mode-num{background:rgba(59,130,246,.15);border-color:var(--accent4);color:var(--accent4);}
         #statusMsg{font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);margin-left:4px;}
         #statusMsg.active{color:var(--accent);}
-        .video-wrapper{position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:#000;aspect-ratio:4/3;}
+
+        .video-wrapper{position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:#000;aspect-ratio:4/3;
+            box-shadow:0 0 0 1px rgba(0,212,255,.06),0 16px 48px rgba(0,0,0,.6);}
         video{width:100%;height:100%;display:block;object-fit:cover;transform:scaleX(-1);}
         canvas{position:absolute;top:0;left:0;width:100%;height:100%;transform:scaleX(-1);}
-        .detect-overlay{position:absolute;top:12px;left:12px;background:rgba(10,10,15,.85);border:1px solid var(--border);border-radius:8px;padding:8px 14px;backdrop-filter:blur(8px);min-width:90px;}
-        .detect-letter{font-size:52px;font-weight:800;color:var(--accent);line-height:1;}
+
+        .detect-overlay{position:absolute;top:12px;left:12px;background:rgba(5,10,18,.88);border:1px solid rgba(0,212,255,.18);border-radius:8px;padding:8px 14px;backdrop-filter:blur(8px);min-width:90px;}
+        .detect-letter{font-size:52px;font-weight:800;color:var(--accent);line-height:1;text-shadow:0 0 20px rgba(0,212,255,.5);}
         .detect-letter.mot{color:var(--accent3);}
         .detect-letter.num{color:var(--accent4);}
         .detect-letter.nodata{color:var(--muted);font-size:36px;}
         .detect-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:2px;}
         .confidence-bar{margin-top:6px;height:3px;background:var(--border);border-radius:2px;overflow:hidden;}
-        .conf-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .15s;}
-        .conf-fill.num{background:var(--accent4);}
-        .mot-badge{position:absolute;top:12px;right:14px;background:rgba(10,10,15,.85);border:1px solid rgba(255,209,102,.35);border-radius:8px;padding:6px 10px;backdrop-filter:blur(8px);font-family:'DM Mono',monospace;font-size:11px;color:var(--accent3);display:none;}
+        .conf-fill{height:100%;background:linear-gradient(90deg,#0090c0,#00d4ff);border-radius:2px;transition:width .15s;}
+        .conf-fill.num{background:linear-gradient(90deg,#1a50c0,#3b82f6);}
+
+        .mot-badge{position:absolute;top:12px;right:14px;background:rgba(5,10,18,.88);border:1px solid rgba(255,209,102,.35);border-radius:8px;padding:6px 10px;backdrop-filter:blur(8px);font-family:'DM Mono',monospace;font-size:11px;color:var(--accent3);display:none;}
         .trail-canvas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;transform:scaleX(-1);}
         .mode-pill{position:absolute;bottom:14px;left:14px;font-family:'DM Mono',monospace;font-size:10px;padding:4px 10px;border-radius:20px;backdrop-filter:blur(8px);}
-        .mode-pill.let{background:rgba(124,255,212,.12);border:1px solid rgba(124,255,212,.3);color:var(--accent);}
-        .mode-pill.num{background:rgba(192,132,252,.12);border:1px solid rgba(192,132,252,.3);color:var(--accent4);}
+        .mode-pill.let{background:rgba(0,212,255,.12);border:1px solid rgba(0,212,255,.3);color:var(--accent);}
+        .mode-pill.num{background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3);color:var(--accent4);}
+
         .hold-ring{position:absolute;bottom:14px;right:14px;width:56px;height:56px;}
         .hold-ring svg{transform:rotate(-90deg);}
-        .hold-ring circle.track{fill:none;stroke:rgba(255,255,255,.08);stroke-width:4;}
-        .hold-ring circle.fill{fill:none;stroke:var(--accent);stroke-width:4;stroke-linecap:round;stroke-dasharray:113;stroke-dashoffset:113;transition:stroke-dashoffset .08s linear;}
+        .hold-ring circle.track{fill:none;stroke:rgba(255,255,255,.06);stroke-width:4;}
+        .hold-ring circle.fill{fill:none;stroke:var(--accent);stroke-width:4;stroke-linecap:round;stroke-dasharray:113;stroke-dashoffset:113;transition:stroke-dashoffset .08s linear;filter:drop-shadow(0 0 4px rgba(0,212,255,.6));}
         .hold-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);text-align:center;line-height:1.2;}
+
         .sidebar{display:flex;flex-direction:column;gap:1rem;}
-        .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1rem 1.25rem;}
+        .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1rem 1.25rem;
+            box-shadow:0 2px 12px rgba(0,0,0,.3);}
         .card-title{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;margin-bottom:.75rem;}
+
         .sentence-display{font-family:'DM Mono',monospace;font-size:22px;font-weight:500;color:var(--text);min-height:60px;line-height:1.4;word-break:break-word;letter-spacing:.05em;cursor:text;}
         .sentence-display .s-char{display:inline;position:relative;}
         .sentence-display .at-cursor::after{content:'';display:inline-block;width:2px;height:.9em;background:var(--accent);vertical-align:text-bottom;margin-left:0px;animation:blink 1s step-end infinite;}
         .sentence-display.end-cursor::after{content:'';display:inline-block;width:2px;height:.9em;background:var(--accent);vertical-align:text-bottom;margin-left:1px;animation:blink 1s step-end infinite;}
         @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
         .sentence-actions{display:flex;gap:6px;margin-top:.75rem;flex-wrap:wrap;}
         .sentence-actions .btn{font-size:12px;padding:5px 12px;}
-        .btn.speak{border-color:rgba(124,255,212,.4);color:var(--accent);display:flex;align-items:center;gap:5px;}
-        .btn.speak:hover{background:rgba(124,255,212,.08);}
-        .btn.speak.speaking{background:rgba(124,255,212,.12);border-color:var(--accent);animation:speakPulse 1s ease-in-out infinite;}
-        @keyframes speakPulse{0%,100%{box-shadow:0 0 0 0 rgba(124,255,212,.3);}50%{box-shadow:0 0 0 5px rgba(124,255,212,0);}}
-        .train-panel{border:1px solid rgba(192,132,252,.25);border-radius:10px;padding:.75rem 1rem;background:rgba(192,132,252,.04);margin-top:.5rem;}
+        .btn.speak{border-color:rgba(0,212,255,.4);color:var(--accent);display:flex;align-items:center;gap:5px;}
+        .btn.speak:hover{background:rgba(0,212,255,.08);}
+        .btn.speak.speaking{background:rgba(0,212,255,.12);border-color:var(--accent);animation:speakPulse 1s ease-in-out infinite;}
+        @keyframes speakPulse{0%,100%{box-shadow:0 0 0 0 rgba(0,212,255,.3);}50%{box-shadow:0 0 0 5px rgba(0,212,255,0);}}
+
+        .train-panel{border:1px solid rgba(59,130,246,.25);border-radius:10px;padding:.75rem 1rem;background:rgba(59,130,246,.04);margin-top:.5rem;}
         .train-panel.hidden{display:none;}
         .train-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:.5rem;}
         .train-label{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);white-space:nowrap;}
         .train-select{font-family:'DM Mono',monospace;font-size:13px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:4px 8px;cursor:pointer;}
-        .train-save{background:rgba(192,132,252,.2);border:1px solid var(--accent4);color:var(--accent4);font-family:'Syne',sans-serif;font-size:12px;font-weight:600;padding:5px 14px;border-radius:6px;cursor:pointer;transition:all .15s;}
-        .train-save:hover{background:rgba(192,132,252,.4);}
+        .train-save{background:rgba(0,212,255,.15);border:1px solid rgba(0,212,255,.4);color:var(--accent);font-family:'Syne',sans-serif;font-size:12px;font-weight:600;padding:5px 14px;border-radius:6px;cursor:pointer;transition:all .15s;}
+        .train-save:hover{background:rgba(0,212,255,.3);}
         .train-counts{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;}
         .tc{padding:1px 5px;border-radius:3px;background:var(--surface);border:1px solid var(--border);font-size:10px;}
-        .tc.has{border-color:rgba(192,132,252,.4);color:var(--accent4);}
+        .tc.has{border-color:rgba(0,212,255,.4);color:var(--accent);}
         .train-status{font-family:'DM Mono',monospace;font-size:11px;min-height:16px;color:var(--accent);margin-top:4px;}
+
         .nodata-banner{background:rgba(255,107,107,.07);border:1px solid rgba(255,107,107,.2);border-radius:8px;padding:.6rem .9rem;font-family:'DM Mono',monospace;font-size:11px;color:var(--accent2);margin-bottom:.5rem;display:none;}
+
         .history-row{display:flex;flex-wrap:wrap;gap:5px;min-height:32px;}
         .chip{font-family:'DM Mono',monospace;font-size:13px;padding:3px 9px;border-radius:5px;background:var(--surface);border:1px solid var(--border);color:var(--text);opacity:0;transform:translateY(4px);animation:chipIn .2s ease forwards;}
         @keyframes chipIn{to{opacity:1;transform:none;}}
-        .chip.space{background:rgba(124,255,212,.08);border-color:rgba(124,255,212,.25);color:var(--accent);}
+        .chip.space{background:rgba(0,212,255,.08);border-color:rgba(0,212,255,.25);color:var(--accent);}
         .chip.mot  {background:rgba(255,209,102,.08);border-color:rgba(255,209,102,.25);color:var(--accent3);}
-        .chip.num  {background:rgba(192,132,252,.08);border-color:rgba(192,132,252,.25);color:var(--accent4);}
+        .chip.num  {background:rgba(59,130,246,.08);border-color:rgba(59,130,246,.25);color:var(--accent4);}
+
         .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
         .stat-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:2px;}
         .stat-value{font-family:'DM Mono',monospace;font-size:15px;font-weight:500;}
+
         .ref-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;}
         .ref-cell{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 4px;text-align:center;transition:all .15s;cursor:pointer;position:relative;}
-        .ref-cell:hover{background:rgba(124,255,212,.07);border-color:rgba(124,255,212,.3);transform:translateY(-1px);}
-        .ref-cell.active{background:rgba(124,255,212,.1);border-color:var(--accent);}
+        .ref-cell:hover{background:rgba(0,212,255,.07);border-color:rgba(0,212,255,.3);transform:translateY(-1px);}
+        .ref-cell.active{background:rgba(0,212,255,.12);border-color:var(--accent);box-shadow:0 0 8px rgba(0,212,255,.2);}
         .ref-cell.mot-cell{border-color:rgba(255,209,102,.2);}
         .ref-cell.mot-cell:hover{background:rgba(255,209,102,.07);border-color:rgba(255,209,102,.5);}
         .ref-cell.mot-cell.active{background:rgba(255,209,102,.1);border-color:var(--accent3);}
-        .ref-cell.num-cell{border-color:rgba(192,132,252,.2);}
-        .ref-cell.num-cell:hover{background:rgba(192,132,252,.07);border-color:rgba(192,132,252,.5);}
-        .ref-cell.num-cell.active{background:rgba(192,132,252,.1);border-color:var(--accent4);}
+        .ref-cell.num-cell{border-color:rgba(59,130,246,.2);}
+        .ref-cell.num-cell:hover{background:rgba(59,130,246,.07);border-color:rgba(59,130,246,.5);}
+        .ref-cell.num-cell.active{background:rgba(59,130,246,.1);border-color:var(--accent4);}
         .ref-letter{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;}
         .ref-cell.mot-cell .ref-letter{color:var(--accent3);}
         .ref-cell.num-cell .ref-letter{color:var(--accent4);}
         .ref-desc{font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);margin-top:1px;line-height:1.3;}
-        .ref-hint{font-family:'DM Mono',monospace;font-size:7px;color:rgba(124,255,212,.35);margin-top:2px;letter-spacing:.04em;}
+        .ref-hint{font-family:'DM Mono',monospace;font-size:7px;color:rgba(0,212,255,.3);margin-top:2px;letter-spacing:.04em;}
         .ref-cell.mot-cell .ref-hint{color:rgba(255,209,102,.35);}
-        .ref-cell.num-cell .ref-hint{color:rgba(192,132,252,.35);}
+        .ref-cell.num-cell .ref-hint{color:rgba(59,130,246,.35);}
+
         .debug-panel{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);line-height:1.7;}
         .top-scores{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;}
         .sc{padding:2px 7px;border-radius:3px;background:var(--surface);border:1px solid var(--border);font-size:10px;}
-        .sc.best{background:rgba(124,255,212,.12);border-color:var(--accent);color:var(--accent);}
-        .sc.best-num{background:rgba(192,132,252,.12);border-color:var(--accent4);color:var(--accent4);}
+        .sc.best{background:rgba(0,212,255,.12);border-color:var(--accent);color:var(--accent);}
+        .sc.best-num{background:rgba(59,130,246,.12);border-color:var(--accent4);color:var(--accent4);}
 
         /* ═══════════════════════════════════════════
            DEXTER DIALOG
         ═══════════════════════════════════════════ */
-        .dexter-backdrop{
-            position:fixed;inset:0;z-index:9000;
-            background:rgba(5,5,10,.75);
-            backdrop-filter:blur(6px);
-            display:flex;align-items:center;justify-content:center;
-            opacity:0;pointer-events:none;
-            transition:opacity .22s ease;
-        }
+        .dexter-backdrop{position:fixed;inset:0;z-index:9000;background:rgba(2,6,14,.8);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .22s ease;}
         .dexter-backdrop.open{opacity:1;pointer-events:all;}
-
-        .dexter-dialog{
-            position:relative;
-            background:var(--card);
-            border:1px solid var(--border);
-            border-radius:18px;
-            width:min(500px,92vw);
-            padding:0;
-            overflow:hidden;
-            box-shadow:0 32px 80px rgba(0,0,0,.7),0 0 0 1px rgba(124,255,212,.06);
-            transform:translateY(18px) scale(.97);
-            transition:transform .25s cubic-bezier(.34,1.56,.64,1);
-        }
+        .dexter-dialog{position:relative;background:var(--card);border:1px solid rgba(0,212,255,.12);border-radius:18px;width:min(500px,92vw);padding:0;overflow:hidden;box-shadow:0 32px 80px rgba(0,0,0,.8),0 0 0 1px rgba(0,212,255,.05),0 0 60px rgba(0,100,200,.08);transform:translateY(18px) scale(.97);transition:transform .25s cubic-bezier(.34,1.56,.64,1);}
         .dexter-backdrop.open .dexter-dialog{transform:none;}
-
-        .dexter-header{
-            display:flex;align-items:center;gap:14px;
-            padding:18px 20px 16px;
-            background:linear-gradient(135deg,rgba(124,255,212,.05) 0%,rgba(192,132,252,.05) 100%);
-            border-bottom:1px solid var(--border);
-        }
-
-        /* Avatar */
-        .dexter-avatar{
-            flex-shrink:0;
-            width:52px;height:52px;border-radius:50%;
-            background:linear-gradient(135deg,#0d2d24 0%,#1a1228 100%);
-            border:2px solid rgba(124,255,212,.3);
-            display:flex;align-items:center;justify-content:center;
-            position:relative;overflow:hidden;
-        }
-        .dexter-avatar::before{
-            content:'';position:absolute;inset:0;
-            background:radial-gradient(circle at 35% 35%,rgba(124,255,212,.15),transparent 60%);
-        }
+        .dexter-header{display:flex;align-items:center;gap:14px;padding:18px 20px 16px;background:linear-gradient(135deg,rgba(0,212,255,.06) 0%,rgba(59,130,246,.06) 100%);border-bottom:1px solid rgba(0,212,255,.1);}
+        .dexter-avatar{flex-shrink:0;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#040d1f 0%,#091428 100%);border:2px solid rgba(0,212,255,.35);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;}
+        .dexter-avatar::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 35% 35%,rgba(0,212,255,.2),transparent 60%);}
         .dexter-avatar-face{font-size:26px;position:relative;z-index:1;line-height:1;}
-        .dexter-avatar-pulse{
-            position:absolute;inset:-3px;border-radius:50%;
-            border:2px solid rgba(124,255,212,.2);
-            animation:avatarPulse 2.2s ease-in-out infinite;
-        }
-        @keyframes avatarPulse{
-            0%,100%{transform:scale(1);opacity:.6;}
-            50%{transform:scale(1.07);opacity:1;}
-        }
-
+        .dexter-avatar-pulse{position:absolute;inset:-3px;border-radius:50%;border:2px solid rgba(0,212,255,.2);animation:avatarPulse 2.2s ease-in-out infinite;}
+        @keyframes avatarPulse{0%,100%{transform:scale(1);opacity:.6;}50%{transform:scale(1.07);opacity:1;}}
         .dexter-header-text{}
         .dexter-name{font-size:16px;font-weight:800;letter-spacing:-.2px;}
-        .dexter-name span{color:var(--accent);}
+        .dexter-name span{background:linear-gradient(135deg,#00d4ff,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
         .dexter-tagline{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:2px;letter-spacing:.06em;}
-
-        .dexter-sign-badge{
-            margin-left:auto;flex-shrink:0;
-            width:44px;height:44px;border-radius:10px;
-            display:flex;align-items:center;justify-content:center;
-            font-size:28px;font-weight:800;
-            border:1px solid;
-        }
-        .dexter-sign-badge.let{background:rgba(124,255,212,.08);border-color:rgba(124,255,212,.3);color:var(--accent);}
+        .dexter-sign-badge{margin-left:auto;flex-shrink:0;width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;border:1px solid;}
+        .dexter-sign-badge.let{background:rgba(0,212,255,.08);border-color:rgba(0,212,255,.3);color:var(--accent);}
         .dexter-sign-badge.mot{background:rgba(255,209,102,.08);border-color:rgba(255,209,102,.3);color:var(--accent3);}
-        .dexter-sign-badge.num{background:rgba(192,132,252,.08);border-color:rgba(192,132,252,.3);color:var(--accent4);}
-
-        .dexter-close{
-            position:absolute;top:14px;right:14px;
-            width:28px;height:28px;border-radius:50%;
-            background:rgba(255,255,255,.05);border:1px solid var(--border);
-            color:var(--muted);font-size:14px;line-height:1;
-            cursor:pointer;display:flex;align-items:center;justify-content:center;
-            transition:all .15s;
-        }
+        .dexter-sign-badge.num{background:rgba(59,130,246,.08);border-color:rgba(59,130,246,.3);color:var(--accent4);}
+        .dexter-close{position:absolute;top:14px;right:14px;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--muted);font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;}
         .dexter-close:hover{background:rgba(255,107,107,.12);border-color:rgba(255,107,107,.4);color:var(--accent2);}
-
         .dexter-body{padding:20px;}
-
-        /* Speech bubble */
-        .dexter-bubble{
-            background:var(--surface);
-            border:1px solid var(--border);
-            border-radius:4px 12px 12px 12px;
-            padding:14px 16px;
-            position:relative;
-            margin-bottom:16px;
-        }
-        .dexter-bubble::before{
-            content:'';position:absolute;top:-8px;left:16px;
-            width:0;height:0;
-            border-left:8px solid transparent;
-            border-right:8px solid transparent;
-            border-bottom:8px solid var(--border);
-        }
-        .dexter-bubble::after{
-            content:'';position:absolute;top:-6px;left:17px;
-            width:0;height:0;
-            border-left:7px solid transparent;
-            border-right:7px solid transparent;
-            border-bottom:7px solid var(--surface);
-        }
-        .dexter-bubble p{
-            font-family:'DM Mono',monospace;font-size:12.5px;
-            line-height:1.7;color:var(--text);
-        }
+        .dexter-bubble{background:var(--surface);border:1px solid var(--border);border-radius:4px 12px 12px 12px;padding:14px 16px;position:relative;margin-bottom:16px;}
+        .dexter-bubble::before{content:'';position:absolute;top:-8px;left:16px;width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:8px solid var(--border);}
+        .dexter-bubble::after{content:'';position:absolute;top:-6px;left:17px;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:7px solid var(--surface);}
+        .dexter-bubble p{font-family:'DM Mono',monospace;font-size:12.5px;line-height:1.7;color:var(--text);}
         .dexter-bubble p + p{margin-top:10px;}
         .dexter-bubble strong{color:var(--accent);font-weight:500;}
         .dexter-bubble.mot-bubble strong{color:var(--accent3);}
         .dexter-bubble.num-bubble strong{color:var(--accent4);}
-
-        /* Steps */
         .dexter-steps{display:flex;flex-direction:column;gap:8px;}
-        .dexter-step{
-            display:flex;align-items:flex-start;gap:11px;
-            background:rgba(255,255,255,.02);
-            border:1px solid var(--border);
-            border-radius:9px;padding:10px 13px;
-            transition:background .15s;
-        }
-        .dexter-step:hover{background:rgba(124,255,212,.04);}
-        .step-num{
-            flex-shrink:0;
-            width:20px;height:20px;border-radius:50%;
-            background:rgba(124,255,212,.1);border:1px solid rgba(124,255,212,.3);
-            font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);
-            display:flex;align-items:center;justify-content:center;
-            margin-top:1px;
-        }
+        .dexter-step{display:flex;align-items:flex-start;gap:11px;background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:9px;padding:10px 13px;transition:background .15s;}
+        .dexter-step:hover{background:rgba(0,212,255,.04);}
+        .step-num{flex-shrink:0;width:20px;height:20px;border-radius:50%;background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.3);font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);display:flex;align-items:center;justify-content:center;margin-top:1px;}
         .step-num.mot{background:rgba(255,209,102,.1);border-color:rgba(255,209,102,.3);color:var(--accent3);}
-        .step-num.num{background:rgba(192,132,252,.1);border-color:rgba(192,132,252,.3);color:var(--accent4);}
+        .step-num.num{background:rgba(59,130,246,.1);border-color:rgba(59,130,246,.3);color:var(--accent4);}
         .step-text{font-family:'DM Mono',monospace;font-size:11.5px;line-height:1.55;color:var(--text);}
         .step-text em{color:var(--muted);font-style:normal;}
-
-        .dexter-tip{
-            margin-top:14px;
-            background:rgba(255,209,102,.05);
-            border:1px solid rgba(255,209,102,.15);
-            border-radius:8px;padding:9px 13px;
-            font-family:'DM Mono',monospace;font-size:11px;
-            color:var(--accent3);line-height:1.5;
-        }
+        .dexter-tip{margin-top:14px;background:rgba(255,209,102,.05);border:1px solid rgba(255,209,102,.15);border-radius:8px;padding:9px 13px;font-family:'DM Mono',monospace;font-size:11px;color:var(--accent3);line-height:1.5;}
         .dexter-tip::before{content:'💡 ';opacity:.85;}
-
-        .dexter-footer{
-            padding:10px 20px 16px;
-            display:flex;justify-content:space-between;align-items:center;
-        }
+        .dexter-footer{padding:10px 20px 16px;display:flex;justify-content:space-between;align-items:center;}
         .dexter-footer-note{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);}
         .dexter-footer-note span{color:var(--accent4);}
-        .dexter-done-btn{
-            font-family:'Syne',sans-serif;font-size:12px;font-weight:700;
-            padding:7px 18px;border-radius:7px;
-            background:var(--accent);color:#000;border:none;
-            cursor:pointer;transition:all .15s;letter-spacing:.04em;
-        }
-        .dexter-done-btn:hover{background:#5de6ba;}
+        .dexter-done-btn{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;padding:7px 18px;border-radius:7px;background:linear-gradient(135deg,#0090c0,#1a60d0);color:#fff;border:none;cursor:pointer;transition:all .15s;letter-spacing:.04em;box-shadow:0 0 16px rgba(0,150,220,.3);}
+        .dexter-done-btn:hover{background:linear-gradient(135deg,#00aad8,#2470e8);}
         .dexter-done-btn.mot{background:var(--accent3);color:#000;}
         .dexter-done-btn.mot:hover{background:#e8b84d;}
         .dexter-done-btn.num{background:var(--accent4);color:#fff;}
-        .dexter-done-btn.num:hover{background:#a855f7;}
+        .dexter-done-btn.num:hover{background:#2563eb;}
 
         @media(max-width:800px){.layout{grid-template-columns:1fr;}}
     </style>
@@ -290,7 +198,10 @@
 <body>
 <div class="app">
     <header>
-        <h1>ASL <span>Translator</span></h1>
+        <div class="brand">
+            <img src="src/images/dexterity_logo_transparent.png" alt="Dexterity Logo" />
+            <span class="brand-name">Dexterity</span>
+        </div>
         <span class="subtitle">// MediaPipe hands · pure KNN · trained on your data</span>
         <span class="badge badge-loading" id="modelBadge">⟳ initializing…</span>
     </header>
@@ -375,7 +286,7 @@
                     <div class="train-status" id="trainStatus"></div>
                     <div class="train-counts" id="trainCounts"></div>
                     <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
-                        <a href="viewer.html" target="_blank" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent4);text-decoration:none;padding:3px 8px;border:1px solid rgba(192,132,252,.3);border-radius:4px;">Open viewer ↗</a>
+                        <a href="viewer.html" target="_blank" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent4);text-decoration:none;padding:3px 8px;border:1px solid rgba(59,130,246,.3);border-radius:4px;">Open viewer ↗</a>
                         <button class="btn" style="font-size:10px;padding:3px 10px;" onclick="reloadSamples()">Reload samples</button>
                     </div>
                 </div>
@@ -450,407 +361,67 @@
        DEXTER — ASL hand-shape knowledge base
     ══════════════════════════════════════════════════════════════════ */
     var DEXTER_DATA = {
-        'A': {
-            type:'let',
-            intro:"Make a <strong>fist</strong> with your dominant hand — but keep the thumb resting on the side, not tucked inside.",
-            steps:[
-                "Curl all four fingers tightly into your palm.",
-                "Rest your thumb along the side of your index finger — <em>not across or inside the fist</em>.",
-                "Hold the fist upright, knuckles facing forward."
-            ],
-            tip:"Think of a solid 'thumbs neutral' fist — thumb visible on the side."
-        },
-        'B': {
-            type:'let',
-            intro:"Hold all four <strong>fingers straight up</strong> and close together, with the thumb folded across the palm.",
-            steps:[
-                "Extend all four fingers fully, pressing them together.",
-                "Bend your thumb across the palm — tucked beneath the fingers.",
-                "Keep the palm facing outward and fingers pointing up."
-            ],
-            tip:"Like showing someone a flat 'stop' — but thumb is folded in, not extended."
-        },
-        'C': {
-            type:'let',
-            intro:"Curve your hand into a <strong>C shape</strong>, like you're holding a cup.",
-            steps:[
-                "Extend all four fingers and bend them into a gentle arc.",
-                "Curve your thumb to mirror the same arc below.",
-                "Leave a rounded gap between thumb and fingers — the letter C shape."
-            ],
-            tip:"Imagine gripping the side of a large coffee mug."
-        },
-        'D': {
-            type:'let',
-            intro:"Point your <strong>index finger up</strong> while the other fingers touch the thumb tip in a circle.",
-            steps:[
-                "Extend your index finger straight up.",
-                "Curve your middle, ring, and pinky fingers down to touch your thumb.",
-                "The three fingers and thumb form a rounded circle on the lower portion."
-            ],
-            tip:"The circle at the bottom and the upright index make the shape of a 'D'."
-        },
-        'E': {
-            type:'let',
-            intro:"<strong>Curl all fingers</strong> forward and bring them down toward the thumb.",
-            steps:[
-                "Bend all four fingers forward at the second knuckle so the fingertips point downward.",
-                "Bring your thumb up slightly to meet the curled fingertips.",
-                "Keep a slight gap — fingers and thumb don't need to fully touch."
-            ],
-            tip:"Think of a gentle claw shape with all fingers bent over and thumb up."
-        },
-        'F': {
-            type:'let',
-            intro:"Touch your <strong>index finger to your thumb</strong> in a circle, with the other three fingers extended.",
-            steps:[
-                "Touch the tip of your index finger to the tip of your thumb, making an 'O' circle.",
-                "Extend your middle, ring, and pinky fingers upward and spread slightly.",
-                "Keep the circle open and round."
-            ],
-            tip:"Similar to the OK gesture, but with fingers spread more naturally upward."
-        },
-        'G': {
-            type:'let',
-            intro:"Point your <strong>index finger sideways</strong> (to the side), with thumb parallel to it — like aiming a gun sideways.",
-            steps:[
-                "Extend your index finger horizontally to the side.",
-                "Extend your thumb in the same horizontal direction, parallel below the index finger.",
-                "Curl the middle, ring, and pinky fingers into the palm.",
-                "Hold the shape sideways, not upright."
-            ],
-            tip:"Rotate a 'gun hand' so it points sideways rather than forward."
-        },
-        'H': {
-            type:'let',
-            intro:"Point your <strong>index and middle fingers together sideways</strong>, like a two-finger side-point.",
-            steps:[
-                "Extend your index and middle fingers together, horizontally to the side.",
-                "Keep those two fingers touching side by side.",
-                "Fold the ring and pinky fingers down, and tuck the thumb."
-            ],
-            tip:"Like the letter G, but with two fingers extended instead of one."
-        },
-        'I': {
-            type:'let',
-            intro:"Extend only your <strong>pinky finger</strong> upward — a solo pinky wave.",
-            steps:[
-                "Make a fist with your hand.",
-                "Extend your pinky finger straight up.",
-                "Keep all other fingers and the thumb curled in."
-            ],
-            tip:"Just your pinky, standing tall. Everything else is tucked away."
-        },
-        'J': {
-            type:'mot',
-            intro:"This is a <strong>motion letter</strong>! Start with a pinky sign (like 'I'), then draw a 'J' shape in the air.",
-            steps:[
-                "Extend your pinky finger (same as the letter I).",
-                "Starting from the top, trace a 'J' curve in the air — <em>move your pinky down, then curl it upward and to the left</em>.",
-                "The motion should be smooth and looping, like writing the letter J."
-            ],
-            tip:"The app watches for this J-curve motion automatically — just perform the letter naturally and hold still at the end."
-        },
-        'K': {
-            type:'let',
-            intro:"Extend your <strong>index and middle fingers in a V</strong>, with your thumb touching between them.",
-            steps:[
-                "Extend your index finger straight up and middle finger angled slightly forward.",
-                "Place your thumb between the index and middle fingers, touching the side of the middle finger.",
-                "Fold the ring and pinky fingers into the palm."
-            ],
-            tip:"Like a peace sign, but with the thumb pushed up between the two fingers."
-        },
-        'L': {
-            type:'let',
-            intro:"Make an <strong>L shape</strong> — index finger pointing up, thumb pointing to the side.",
-            steps:[
-                "Extend your index finger straight up.",
-                "Extend your thumb horizontally to the side.",
-                "Curl your middle, ring, and pinky fingers into the palm."
-            ],
-            tip:"The classic 'L for Loser' hand shape — but now you're using it to learn ASL!"
-        },
-        'M': {
-            type:'let',
-            intro:"Fold <strong>three fingers (index, middle, ring) over the thumb</strong>, which is tucked into the palm.",
-            steps:[
-                "Tuck your thumb loosely into your palm.",
-                "Fold your index, middle, and ring fingers down over the thumb.",
-                "Keep the pinky finger curled in similarly.",
-                "Hold the hand with knuckles forward."
-            ],
-            tip:"Visualize three 'humps' of the letter M — the three fingertips represent each hump."
-        },
-        'N': {
-            type:'let',
-            intro:"Similar to M, but only <strong>two fingers (index and middle)</strong> fold over the tucked thumb.",
-            steps:[
-                "Tuck your thumb loosely into your palm.",
-                "Fold your index and middle fingers down over the thumb.",
-                "Keep ring and pinky fingers curled into the palm (not over thumb)."
-            ],
-            tip:"Two humps for N, three for M — very similar signs, so pay attention to the finger count."
-        },
-        'O': {
-            type:'let',
-            intro:"Curve all fingers and thumb together to form a <strong>round O shape</strong>.",
-            steps:[
-                "Curve all four fingers downward and inward.",
-                "Bring your thumb up to meet the fingertips.",
-                "All fingers and thumb should touch (or nearly touch) forming a circle."
-            ],
-            tip:"The shape of your hand literally looks like the letter O when viewed from the side."
-        },
-        'P': {
-            type:'let',
-            intro:"Similar to K, but <strong>rotated downward</strong> — index and middle point down, thumb out.",
-            steps:[
-                "Start with a K handshape (index up, middle forward, thumb between them).",
-                "Rotate your wrist so the fingers point downward.",
-                "Your thumb should now point to the side, and the V of fingers faces down."
-            ],
-            tip:"Think of it as a K that's been tipped over to point at the ground."
-        },
-        'Q': {
-            type:'let',
-            intro:"Like G but <strong>rotated downward</strong> — index and thumb both point down.",
-            steps:[
-                "Start with a G handshape (index and thumb extended sideways).",
-                "Rotate your wrist so both the index finger and thumb point downward.",
-                "The other fingers remain curled in the palm."
-            ],
-            tip:"It's a G that's pointing toward the floor instead of sideways."
-        },
-        'R': {
-            type:'let',
-            intro:"<strong>Cross your index and middle fingers</strong> — like crossing your fingers for luck.",
-            steps:[
-                "Extend your index finger upward.",
-                "Cross your middle finger over the top of your index finger.",
-                "Fold the ring and pinky fingers down, and tuck the thumb."
-            ],
-            tip:"Literally the 'crossed fingers' gesture you make for good luck."
-        },
-        'S': {
-            type:'let',
-            intro:"Make a <strong>fist with the thumb across the front</strong> of your curled fingers.",
-            steps:[
-                "Curl all four fingers into a fist.",
-                "Place your thumb across the front of your fingers, over the middle knuckles.",
-                "The thumb rests horizontally across the outside of the fist."
-            ],
-            tip:"Very close to A, but the thumb wraps over the front of the fingers rather than resting at the side."
-        },
-        'T': {
-            type:'let',
-            intro:"Tuck your <strong>thumb between index and middle finger</strong>, making a compact fist-like shape.",
-            steps:[
-                "Make a fist.",
-                "Extend your thumb upward, then tuck it between your index and middle fingers.",
-                "The thumb tip should be visible between those two fingers."
-            ],
-            tip:"It looks like a compact fist with the thumb peeking through the middle."
-        },
-        'U': {
-            type:'let',
-            intro:"Extend <strong>index and middle fingers straight up together</strong> — the peace sign without spreading.",
-            steps:[
-                "Extend your index and middle fingers fully upward, pressing them together.",
-                "Fold the ring and pinky fingers down.",
-                "Tuck the thumb across the folded fingers."
-            ],
-            tip:"Like a peace sign but with the two fingers kept together rather than spread into a V."
-        },
-        'V': {
-            type:'let',
-            intro:"Spread your <strong>index and middle fingers into a V</strong> — the peace/victory sign!",
-            steps:[
-                "Extend your index and middle fingers fully, spread apart in a V shape.",
-                "Fold the ring and pinky fingers down.",
-                "Tuck the thumb across the folded fingers."
-            ],
-            tip:"The classic peace sign. You probably already know this one!"
-        },
-        'W': {
-            type:'let',
-            intro:"Extend <strong>three fingers (index, middle, ring) spread apart</strong> in a W shape.",
-            steps:[
-                "Extend your index, middle, and ring fingers fully, spreading them apart.",
-                "Fold your pinky finger down.",
-                "Tuck the thumb across the folded pinky."
-            ],
-            tip:"Three fingers fanned out wide. Think 'W for Wide' to remember the spread."
-        },
-        'X': {
-            type:'let',
-            intro:"Make a <strong>hook with your index finger</strong> — bent like a fishhook.",
-            steps:[
-                "Curl your index finger into a bent hook shape (not fully curled, just crooked at the joint).",
-                "Keep all other fingers curled into the palm.",
-                "Tuck the thumb across the fingers."
-            ],
-            tip:"Just a crooked, hooked index finger — like beckoning someone to come closer."
-        },
-        'Y': {
-            type:'let',
-            intro:"Extend your <strong>thumb and pinky</strong> outward — the 'hang loose' or shaka sign.",
-            steps:[
-                "Extend your thumb out to the side.",
-                "Extend your pinky finger up and slightly outward.",
-                "Curl your index, middle, and ring fingers into the palm."
-            ],
-            tip:"The surfer's 'hang loose' shaka sign — easy to remember!"
-        },
-        'Z': {
-            type:'mot',
-            intro:"This is a <strong>motion letter</strong>! Extend your index finger and draw a 'Z' shape in the air.",
-            steps:[
-                "Extend only your index finger (all others curled, like the number 1).",
-                "Draw a Z in the air: <em>move right, then diagonally down-left, then right again</em>.",
-                "The three strokes of the Z should be smooth and deliberate."
-            ],
-            tip:"Write the letter Z with your fingertip in the air. The app watches for this zigzag motion pattern."
-        },
-        '0': {
-            type:'num',
-            intro:"Touch all <strong>fingertips to the thumb tip</strong> to form a round O — like blowing a kiss.",
-            steps:[
-                "Bring all four fingertips together toward your thumb tip.",
-                "All five digits touch at their tips, forming a rounded bundle.",
-                "The shape looks like an O or a closed bud from the side."
-            ],
-            tip:"Similar to the letter O, but all fingertips touch the thumb tip more precisely. Think of pinching air."
-        },
-        '1': {
-            type:'num',
-            intro:"Point your <strong>index finger straight up</strong> — one finger, one number.",
-            steps:[
-                "Extend your index finger fully upward.",
-                "Curl all other fingers into the palm.",
-                "Tuck the thumb across the curled fingers."
-            ],
-            tip:"Simple and intuitive — just one finger pointing up to mean 'one'."
-        },
-        '2': {
-            type:'num',
-            intro:"Hold up <strong>two fingers in a V</strong> — like the number 2 or the peace sign.",
-            steps:[
-                "Extend your index and middle fingers upward, slightly spread.",
-                "Fold ring and pinky fingers down.",
-                "Tuck the thumb."
-            ],
-            tip:"Like the letter V or a peace sign. Two fingers = two."
-        },
-        '3': {
-            type:'num',
-            intro:"Extend <strong>thumb, index, and middle fingers</strong> — three fingers up.",
-            steps:[
-                "Extend your thumb out to the side.",
-                "Extend your index and middle fingers straight up.",
-                "Fold ring and pinky fingers into the palm."
-            ],
-            tip:"Think of it as the number 2 plus an added thumb making the spread look like a '3'."
-        },
-        '4': {
-            type:'num',
-            intro:"Extend <strong>four fingers (index through pinky)</strong> straight up, thumb folded in.",
-            steps:[
-                "Extend all four fingers (index, middle, ring, pinky) straight up together.",
-                "Fold your thumb across into the palm.",
-                "Hold palm forward."
-            ],
-            tip:"Four fingers up, thumb hidden — clean and simple."
-        },
-        '5': {
-            type:'num',
-            intro:"Spread <strong>all five fingers wide open</strong> — an open hand.",
-            steps:[
-                "Open your hand fully.",
-                "Spread all five fingers as wide as they'll comfortably go.",
-                "Hold the open palm facing outward."
-            ],
-            tip:"The most natural hand position — just open your hand wide!"
-        },
-        '6': {
-            type:'num',
-            intro:"Touch your <strong>pinky to your thumb</strong> while keeping other fingers extended.",
-            steps:[
-                "Extend your index, middle, and ring fingers upward.",
-                "Touch the tip of your pinky to the tip of your thumb.",
-                "Keep the three extended fingers straight and spread slightly."
-            ],
-            tip:"Think of it as a modified 'W' but with thumb and pinky connected below."
-        },
-        '7': {
-            type:'num',
-            intro:"Touch your <strong>ring finger to your thumb</strong> while keeping others extended.",
-            steps:[
-                "Extend your index, middle, and pinky fingers upward.",
-                "Touch the tip of your ring finger to the tip of your thumb.",
-                "Keep the three other fingers comfortably extended."
-            ],
-            tip:"Similar to 6 but move one finger inward — the ring finger connects to the thumb now."
-        },
-        '8': {
-            type:'num',
-            intro:"Touch your <strong>middle finger to your thumb</strong> while keeping others extended.",
-            steps:[
-                "Extend your index, ring, and pinky fingers upward.",
-                "Bring your middle finger down to touch the tip of your thumb.",
-                "Keep the three remaining fingers extended and relaxed."
-            ],
-            tip:"Working down from the outside in — pinky for 6, ring for 7, middle for 8."
-        },
-        '9': {
-            type:'num',
-            intro:"Touch your <strong>index finger to your thumb</strong> while other fingers are extended — like the OK sign with extras.",
-            steps:[
-                "Touch the tip of your index finger to the tip of your thumb, making a circle.",
-                "Extend your middle, ring, and pinky fingers upward.",
-                "Hold the shape comfortably upright."
-            ],
-            tip:"Very close to the letter F — the difference is subtle; practice both to distinguish them."
-        }
+        'A': {type:'let',intro:"Make a <strong>fist</strong> with your dominant hand — but keep the thumb resting on the side, not tucked inside.",steps:["Curl all four fingers tightly into your palm.","Rest your thumb along the side of your index finger — <em>not across or inside the fist</em>.","Hold the fist upright, knuckles facing forward."],tip:"Think of a solid 'thumbs neutral' fist — thumb visible on the side."},
+        'B': {type:'let',intro:"Hold all four <strong>fingers straight up</strong> and close together, with the thumb folded across the palm.",steps:["Extend all four fingers fully, pressing them together.","Bend your thumb across the palm — tucked beneath the fingers.","Keep the palm facing outward and fingers pointing up."],tip:"Like showing someone a flat 'stop' — but thumb is folded in, not extended."},
+        'C': {type:'let',intro:"Curve your hand into a <strong>C shape</strong>, like you're holding a cup.",steps:["Extend all four fingers and bend them into a gentle arc.","Curve your thumb to mirror the same arc below.","Leave a rounded gap between thumb and fingers — the letter C shape."],tip:"Imagine gripping the side of a large coffee mug."},
+        'D': {type:'let',intro:"Point your <strong>index finger up</strong> while the other fingers touch the thumb tip in a circle.",steps:["Extend your index finger straight up.","Curve your middle, ring, and pinky fingers down to touch your thumb.","The three fingers and thumb form a rounded circle on the lower portion."],tip:"The circle at the bottom and the upright index make the shape of a 'D'."},
+        'E': {type:'let',intro:"<strong>Curl all fingers</strong> forward and bring them down toward the thumb.",steps:["Bend all four fingers forward at the second knuckle so the fingertips point downward.","Bring your thumb up slightly to meet the curled fingertips.","Keep a slight gap — fingers and thumb don't need to fully touch."],tip:"Think of a gentle claw shape with all fingers bent over and thumb up."},
+        'F': {type:'let',intro:"Touch your <strong>index finger to your thumb</strong> in a circle, with the other three fingers extended.",steps:["Touch the tip of your index finger to the tip of your thumb, making an 'O' circle.","Extend your middle, ring, and pinky fingers upward and spread slightly.","Keep the circle open and round."],tip:"Similar to the OK gesture, but with fingers spread more naturally upward."},
+        'G': {type:'let',intro:"Point your <strong>index finger sideways</strong> (to the side), with thumb parallel to it — like aiming a gun sideways.",steps:["Extend your index finger horizontally to the side.","Extend your thumb in the same horizontal direction, parallel below the index finger.","Curl the middle, ring, and pinky fingers into the palm.","Hold the shape sideways, not upright."],tip:"Rotate a 'gun hand' so it points sideways rather than forward."},
+        'H': {type:'let',intro:"Point your <strong>index and middle fingers together sideways</strong>, like a two-finger side-point.",steps:["Extend your index and middle fingers together, horizontally to the side.","Keep those two fingers touching side by side.","Fold the ring and pinky fingers down, and tuck the thumb."],tip:"Like the letter G, but with two fingers extended instead of one."},
+        'I': {type:'let',intro:"Extend only your <strong>pinky finger</strong> upward — a solo pinky wave.",steps:["Make a fist with your hand.","Extend your pinky finger straight up.","Keep all other fingers and the thumb curled in."],tip:"Just your pinky, standing tall. Everything else is tucked away."},
+        'J': {type:'mot',intro:"This is a <strong>motion letter</strong>! Start with a pinky sign (like 'I'), then draw a 'J' shape in the air.",steps:["Extend your pinky finger (same as the letter I).","Starting from the top, trace a 'J' curve in the air — <em>move your pinky down, then curl it upward and to the left</em>.","The motion should be smooth and looping, like writing the letter J."],tip:"The app watches for this J-curve motion automatically — just perform the letter naturally and hold still at the end."},
+        'K': {type:'let',intro:"Extend your <strong>index and middle fingers in a V</strong>, with your thumb touching between them.",steps:["Extend your index finger straight up and middle finger angled slightly forward.","Place your thumb between the index and middle fingers, touching the side of the middle finger.","Fold the ring and pinky fingers into the palm."],tip:"Like a peace sign, but with the thumb pushed up between the two fingers."},
+        'L': {type:'let',intro:"Make an <strong>L shape</strong> — index finger pointing up, thumb pointing to the side.",steps:["Extend your index finger straight up.","Extend your thumb horizontally to the side.","Curl your middle, ring, and pinky fingers into the palm."],tip:"The classic 'L for Loser' hand shape — but now you're using it to learn ASL!"},
+        'M': {type:'let',intro:"Fold <strong>three fingers (index, middle, ring) over the thumb</strong>, which is tucked into the palm.",steps:["Tuck your thumb loosely into your palm.","Fold your index, middle, and ring fingers down over the thumb.","Keep the pinky finger curled in similarly.","Hold the hand with knuckles forward."],tip:"Visualize three 'humps' of the letter M — the three fingertips represent each hump."},
+        'N': {type:'let',intro:"Similar to M, but only <strong>two fingers (index and middle)</strong> fold over the tucked thumb.",steps:["Tuck your thumb loosely into your palm.","Fold your index and middle fingers down over the thumb.","Keep ring and pinky fingers curled into the palm (not over thumb)."],tip:"Two humps for N, three for M — very similar signs, so pay attention to the finger count."},
+        'O': {type:'let',intro:"Curve all fingers and thumb together to form a <strong>round O shape</strong>.",steps:["Curve all four fingers downward and inward.","Bring your thumb up to meet the fingertips.","All fingers and thumb should touch (or nearly touch) forming a circle."],tip:"The shape of your hand literally looks like the letter O when viewed from the side."},
+        'P': {type:'let',intro:"Similar to K, but <strong>rotated downward</strong> — index and middle point down, thumb out.",steps:["Start with a K handshape (index up, middle forward, thumb between them).","Rotate your wrist so the fingers point downward.","Your thumb should now point to the side, and the V of fingers faces down."],tip:"Think of it as a K that's been tipped over to point at the ground."},
+        'Q': {type:'let',intro:"Like G but <strong>rotated downward</strong> — index and thumb both point down.",steps:["Start with a G handshape (index and thumb extended sideways).","Rotate your wrist so both the index finger and thumb point downward.","The other fingers remain curled in the palm."],tip:"It's a G that's pointing toward the floor instead of sideways."},
+        'R': {type:'let',intro:"<strong>Cross your index and middle fingers</strong> — like crossing your fingers for luck.",steps:["Extend your index finger upward.","Cross your middle finger over the top of your index finger.","Fold the ring and pinky fingers down, and tuck the thumb."],tip:"Literally the 'crossed fingers' gesture you make for good luck."},
+        'S': {type:'let',intro:"Make a <strong>fist with the thumb across the front</strong> of your curled fingers.",steps:["Curl all four fingers into a fist.","Place your thumb across the front of your fingers, over the middle knuckles.","The thumb rests horizontally across the outside of the fist."],tip:"Very close to A, but the thumb wraps over the front of the fingers rather than resting at the side."},
+        'T': {type:'let',intro:"Tuck your <strong>thumb between index and middle finger</strong>, making a compact fist-like shape.",steps:["Make a fist.","Extend your thumb upward, then tuck it between your index and middle fingers.","The thumb tip should be visible between those two fingers."],tip:"It looks like a compact fist with the thumb peeking through the middle."},
+        'U': {type:'let',intro:"Extend <strong>index and middle fingers straight up together</strong> — the peace sign without spreading.",steps:["Extend your index and middle fingers fully upward, pressing them together.","Fold the ring and pinky fingers down.","Tuck the thumb across the folded fingers."],tip:"Like a peace sign but with the two fingers kept together rather than spread into a V."},
+        'V': {type:'let',intro:"Spread your <strong>index and middle fingers into a V</strong> — the peace/victory sign!",steps:["Extend your index and middle fingers fully, spread apart in a V shape.","Fold the ring and pinky fingers down.","Tuck the thumb across the folded fingers."],tip:"The classic peace sign. You probably already know this one!"},
+        'W': {type:'let',intro:"Extend <strong>three fingers (index, middle, ring) spread apart</strong> in a W shape.",steps:["Extend your index, middle, and ring fingers fully, spreading them apart.","Fold your pinky finger down.","Tuck the thumb across the folded pinky."],tip:"Three fingers fanned out wide. Think 'W for Wide' to remember the spread."},
+        'X': {type:'let',intro:"Make a <strong>hook with your index finger</strong> — bent like a fishhook.",steps:["Curl your index finger into a bent hook shape (not fully curled, just crooked at the joint).","Keep all other fingers curled into the palm.","Tuck the thumb across the fingers."],tip:"Just a crooked, hooked index finger — like beckoning someone to come closer."},
+        'Y': {type:'let',intro:"Extend your <strong>thumb and pinky</strong> outward — the 'hang loose' or shaka sign.",steps:["Extend your thumb out to the side.","Extend your pinky finger up and slightly outward.","Curl your index, middle, and ring fingers into the palm."],tip:"The surfer's 'hang loose' shaka sign — easy to remember!"},
+        'Z': {type:'mot',intro:"This is a <strong>motion letter</strong>! Extend your index finger and draw a 'Z' shape in the air.",steps:["Extend only your index finger (all others curled, like the number 1).","Draw a Z in the air: <em>move right, then diagonally down-left, then right again</em>.","The three strokes of the Z should be smooth and deliberate."],tip:"Write the letter Z with your fingertip in the air. The app watches for this zigzag motion pattern."},
+        '0': {type:'num',intro:"Touch all <strong>fingertips to the thumb tip</strong> to form a round O — like blowing a kiss.",steps:["Bring all four fingertips together toward your thumb tip.","All five digits touch at their tips, forming a rounded bundle.","The shape looks like an O or a closed bud from the side."],tip:"Similar to the letter O, but all fingertips touch the thumb tip more precisely. Think of pinching air."},
+        '1': {type:'num',intro:"Point your <strong>index finger straight up</strong> — one finger, one number.",steps:["Extend your index finger fully upward.","Curl all other fingers into the palm.","Tuck the thumb across the curled fingers."],tip:"Simple and intuitive — just one finger pointing up to mean 'one'."},
+        '2': {type:'num',intro:"Hold up <strong>two fingers in a V</strong> — like the number 2 or the peace sign.",steps:["Extend your index and middle fingers upward, slightly spread.","Fold ring and pinky fingers down.","Tuck the thumb."],tip:"Like the letter V or a peace sign. Two fingers = two."},
+        '3': {type:'num',intro:"Extend <strong>thumb, index, and middle fingers</strong> — three fingers up.",steps:["Extend your thumb out to the side.","Extend your index and middle fingers straight up.","Fold ring and pinky fingers into the palm."],tip:"Think of it as the number 2 plus an added thumb making the spread look like a '3'."},
+        '4': {type:'num',intro:"Extend <strong>four fingers (index through pinky)</strong> straight up, thumb folded in.",steps:["Extend all four fingers (index, middle, ring, pinky) straight up together.","Fold your thumb across into the palm.","Hold palm forward."],tip:"Four fingers up, thumb hidden — clean and simple."},
+        '5': {type:'num',intro:"Spread <strong>all five fingers wide open</strong> — an open hand.",steps:["Open your hand fully.","Spread all five fingers as wide as they'll comfortably go.","Hold the open palm facing outward."],tip:"The most natural hand position — just open your hand wide!"},
+        '6': {type:'num',intro:"Touch your <strong>pinky to your thumb</strong> while keeping other fingers extended.",steps:["Extend your index, middle, and ring fingers upward.","Touch the tip of your pinky to the tip of your thumb.","Keep the three extended fingers straight and spread slightly."],tip:"Think of it as a modified 'W' but with thumb and pinky connected below."},
+        '7': {type:'num',intro:"Touch your <strong>ring finger to your thumb</strong> while keeping others extended.",steps:["Extend your index, middle, and pinky fingers upward.","Touch the tip of your ring finger to the tip of your thumb.","Keep the three other fingers comfortably extended."],tip:"Similar to 6 but move one finger inward — the ring finger connects to the thumb now."},
+        '8': {type:'num',intro:"Touch your <strong>middle finger to your thumb</strong> while keeping others extended.",steps:["Extend your index, ring, and pinky fingers upward.","Bring your middle finger down to touch the tip of your thumb.","Keep the three remaining fingers extended and relaxed."],tip:"Working down from the outside in — pinky for 6, ring for 7, middle for 8."},
+        '9': {type:'num',intro:"Touch your <strong>index finger to your thumb</strong> while other fingers are extended — like the OK sign with extras.",steps:["Touch the tip of your index finger to the tip of your thumb, making a circle.","Extend your middle, ring, and pinky fingers upward.","Hold the shape comfortably upright."],tip:"Very close to the letter F — the difference is subtle; practice both to distinguish them."}
     };
 
     function openDexter(letter) {
         var data = DEXTER_DATA[letter];
         if (!data) return;
-
-        var t = data.type; // 'let', 'mot', 'num'
+        var t = data.type;
         var badge = document.getElementById('dexterBadge');
         badge.textContent = letter;
         badge.className = 'dexter-sign-badge ' + t;
-
         var doneBtn = document.getElementById('dexterDoneBtn');
         doneBtn.className = 'dexter-done-btn ' + t;
-
         var stepClass = t === 'mot' ? 'mot' : (t === 'num' ? 'num' : '');
         var bubbleClass = 'dexter-bubble' + (t === 'mot' ? ' mot-bubble' : (t === 'num' ? ' num-bubble' : ''));
-
         var typeLabel = t === 'mot'
             ? '<span style="color:var(--accent3);font-size:10px;font-family:\'DM Mono\',monospace;display:block;margin-bottom:6px;">★ MOTION LETTER — requires hand movement</span>'
             : (t === 'num'
                 ? '<span style="color:var(--accent4);font-size:10px;font-family:\'DM Mono\',monospace;display:block;margin-bottom:6px;">◆ NUMBER SIGN — switch to numbers mode</span>'
                 : '');
-
         var stepsHTML = data.steps.map(function(s, i) {
             return '<div class="dexter-step"><div class="step-num ' + stepClass + '">' + (i+1) + '</div><div class="step-text">' + s + '</div></div>';
         }).join('');
-
-        var tipHTML = data.tip
-            ? '<div class="dexter-tip">' + data.tip + '</div>'
-            : '';
-
+        var tipHTML = data.tip ? '<div class="dexter-tip">' + data.tip + '</div>' : '';
         document.getElementById('dexterBody').innerHTML =
-            '<div class="' + bubbleClass + '">' +
-            typeLabel +
-            '<p>' + data.intro + '</p>' +
-            '</div>' +
-            '<div class="dexter-steps">' + stepsHTML + '</div>' +
-            tipHTML;
-
+            '<div class="' + bubbleClass + '">' + typeLabel + '<p>' + data.intro + '</p></div>' +
+            '<div class="dexter-steps">' + stepsHTML + '</div>' + tipHTML;
         document.getElementById('dexterBackdrop').classList.add('open');
         document.body.style.overflow = 'hidden';
     }
@@ -864,9 +435,7 @@
         if (e.target === document.getElementById('dexterBackdrop')) closeDexter();
     }
 
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') closeDexter();
-    });
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeDexter(); });
 
     /* ─── LANDMARK SMOOTHER (EMA) ─── */
     var smoothedDraw = null, smoothedClass = null;
@@ -877,11 +446,7 @@
     function applyEMA(prev, current, alpha) {
         if (!prev) return current.map(function(p) { return {x:p.x,y:p.y,z:p.z}; });
         return current.map(function(p, i) {
-            return {
-                x: prev[i].x + alpha*(p.x-prev[i].x),
-                y: prev[i].y + alpha*(p.y-prev[i].y),
-                z: prev[i].z + alpha*(p.z-prev[i].z)
-            };
+            return {x: prev[i].x + alpha*(p.x-prev[i].x), y: prev[i].y + alpha*(p.y-prev[i].y), z: prev[i].z + alpha*(p.z-prev[i].z)};
         });
     }
 
@@ -891,7 +456,6 @@
         return { draw: smoothedDraw, classify: smoothedClass };
     }
 
-    /* ─── geometry helpers ─── */
     function normLM(lm) {
         var w=lm[0], sc=Math.hypot(lm[9].x-w.x, lm[9].y-w.y, lm[9].z-w.z)||0.001;
         return lm.map(function(p){return{x:(p.x-w.x)/sc,y:(p.y-w.y)/sc,z:(p.z-w.z)/sc};});
@@ -902,7 +466,6 @@
     ══════════════════════════════════════════════════════════════════ */
     var allSamples = [];
     var sampleCounts = {};
-
     var LETTER_LABELS = ['A','B','C','D','E','F','G','H','I','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y'];
     var NUMBER_LABELS = ['0','1','2','3','4','5','6','7','8','9'];
 
@@ -1148,8 +711,6 @@
         if (!txt) return;
         var btn = document.getElementById('speakBtn');
         var icon = document.getElementById('speakIcon');
-
-        // If already speaking, stop it
         if (_speaking) {
             window.speechSynthesis.cancel();
             _speaking = false;
@@ -1157,21 +718,11 @@
             icon.textContent = '🔊';
             return;
         }
-
         var utt = new SpeechSynthesisUtterance(txt);
-        utt.rate = 0.95;
-        utt.pitch = 1;
-        utt.onstart = function() {
-            _speaking = true;
-            btn.classList.add('speaking');
-            icon.textContent = '⏹';
-        };
-        utt.onend = utt.onerror = function() {
-            _speaking = false;
-            btn.classList.remove('speaking');
-            icon.textContent = '🔊';
-        };
-        window.speechSynthesis.cancel(); // clear queue first
+        utt.rate = 0.95; utt.pitch = 1;
+        utt.onstart = function() { _speaking = true; btn.classList.add('speaking'); icon.textContent = '⏹'; };
+        utt.onend = utt.onerror = function() { _speaking = false; btn.classList.remove('speaking'); icon.textContent = '🔊'; };
+        window.speechSynthesis.cancel();
         window.speechSynthesis.speak(utt);
     }
 
@@ -1229,7 +780,7 @@
         updateNodataBanner();
     }
 
-    /* Build reference grid — with click-to-open-Dexter */
+    /* Build reference grid */
     (function(){
         var items=[
             {l:'A'},{l:'B'},{l:'C'},{l:'D'},{l:'E'},{l:'F'},
@@ -1261,7 +812,7 @@
     }
 
     /* ══════════════════════════════════════════════════════════════════
-       CAMERA & INFERENCE — MediaPipe Hands
+       CAMERA & INFERENCE
     ══════════════════════════════════════════════════════════════════ */
     var CONN=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
     var TIPS=[4,8,12,16,20];
@@ -1360,13 +911,13 @@
             octx.beginPath();
             octx.moveTo(drawLM[p[0]].x*W,drawLM[p[0]].y*H);
             octx.lineTo(drawLM[p[1]].x*W,drawLM[p[1]].y*H);
-            octx.strokeStyle='rgba(124,255,212,.45)';octx.lineWidth=2;octx.stroke();
+            octx.strokeStyle='rgba(0,180,255,.45)';octx.lineWidth=2;octx.stroke();
         });
         drawLM.forEach(function(p,i){
             var tip=TIPS.indexOf(i)>=0;
             octx.beginPath();octx.arc(p.x*W,p.y*H,tip?7:4,0,2*Math.PI);
-            octx.fillStyle=tip?'rgba(255,209,102,.95)':'rgba(200,210,255,.85)';octx.fill();
-            octx.strokeStyle=tip?'rgba(220,140,0,.8)':'rgba(124,255,212,.5)';
+            octx.fillStyle=tip?'rgba(0,212,255,.95)':'rgba(180,220,255,.85)';octx.fill();
+            octx.strokeStyle=tip?'rgba(0,150,220,.9)':'rgba(0,212,255,.5)';
             octx.lineWidth=1.5;octx.stroke();
         });
         scrTrail.push({x:drawLM[8].x*W,y:drawLM[8].y*H});
@@ -1374,7 +925,7 @@
         tctx.clearRect(0,0,tc.width,tc.height);
         for(var i=1;i<scrTrail.length;i++){
             var a=i/scrTrail.length;
-            tctx.strokeStyle='rgba(255,209,102,'+(a*.7)+')';tctx.lineWidth=a*2.5+.5;
+            tctx.strokeStyle='rgba(0,212,255,'+(a*.65)+')';tctx.lineWidth=a*2.5+.5;
             tctx.beginPath();tctx.moveTo(scrTrail[i-1].x,scrTrail[i-1].y);tctx.lineTo(scrTrail[i].x,scrTrail[i].y);tctx.stroke();
         }
         pushTrail(classLM);
