@@ -58,11 +58,25 @@
         .sidebar{display:flex;flex-direction:column;gap:1rem;}
         .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1rem 1.25rem;}
         .card-title{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;margin-bottom:.75rem;}
-        .sentence-display{font-family:'DM Mono',monospace;font-size:22px;font-weight:500;color:var(--text);min-height:60px;line-height:1.4;word-break:break-word;}
-        .cursor{display:inline-block;width:2px;height:1.1em;background:var(--accent);vertical-align:text-bottom;margin-left:2px;animation:blink 1s step-end infinite;}
+        .sentence-display{font-family:'DM Mono',monospace;font-size:22px;font-weight:500;color:var(--text);min-height:60px;line-height:1.4;word-break:break-word;letter-spacing:.05em;cursor:text;}
+        .sentence-display .s-char{display:inline;position:relative;}
+        .sentence-display .at-cursor::after{content:'';display:inline-block;width:2px;height:.9em;background:var(--accent);vertical-align:text-bottom;margin-left:0px;animation:blink 1s step-end infinite;}
+        .sentence-display.end-cursor::after{content:'';display:inline-block;width:2px;height:.9em;background:var(--accent);vertical-align:text-bottom;margin-left:1px;animation:blink 1s step-end infinite;}
         @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
         .sentence-actions{display:flex;gap:6px;margin-top:.75rem;flex-wrap:wrap;}
         .sentence-actions .btn{font-size:12px;padding:5px 12px;}
+        /* Training panel */
+        .train-panel{border:1px solid rgba(192,132,252,.25);border-radius:10px;padding:.75rem 1rem;background:rgba(192,132,252,.04);margin-top:.5rem;}
+        .train-panel.hidden{display:none;}
+        .train-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:.5rem;}
+        .train-label{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);white-space:nowrap;}
+        .train-select{font-family:'DM Mono',monospace;font-size:13px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:4px 8px;cursor:pointer;}
+        .train-save{background:rgba(192,132,252,.2);border:1px solid var(--accent4);color:var(--accent4);font-family:'Syne',sans-serif;font-size:12px;font-weight:600;padding:5px 14px;border-radius:6px;cursor:pointer;transition:all .15s;}
+        .train-save:hover{background:rgba(192,132,252,.4);}
+        .train-counts{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;}
+        .tc{padding:1px 5px;border-radius:3px;background:var(--surface);border:1px solid var(--border);font-size:10px;}
+        .tc.has{border-color:rgba(192,132,252,.4);color:var(--accent4);}
+        .train-status{font-family:'DM Mono',monospace;font-size:11px;min-height:16px;color:var(--accent);margin-top:4px;}
         .history-row{display:flex;flex-wrap:wrap;gap:5px;min-height:32px;}
         .chip{font-family:'DM Mono',monospace;font-size:13px;padding:3px 9px;border-radius:5px;background:var(--surface);border:1px solid var(--border);color:var(--text);opacity:0;transform:translateY(4px);animation:chipIn .2s ease forwards;}
         @keyframes chipIn{to{opacity:1;transform:none;}}
@@ -135,12 +149,46 @@
         <div class="sidebar">
             <div class="card">
                 <div class="card-title">Sentence Builder</div>
-                <div class="sentence-display"><span id="sentenceText"></span><span class="cursor"></span></div>
+                <div class="sentence-display end-cursor" id="sentenceDisplay"></div>
                 <div class="sentence-actions">
+                    <button class="btn" onclick="cursorLeft()">◀</button>
+                    <button class="btn" onclick="cursorRight()">▶</button>
                     <button class="btn" onclick="addSpace()">Space ␣</button>
-                    <button class="btn" onclick="deleteChar()">⌫ Delete</button>
+                    <button class="btn" onclick="deleteChar()">⌫</button>
                     <button class="btn" onclick="clearSentence()">Clear</button>
                     <button class="btn" onclick="copySentence()">Copy</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+                    <span>Training Data</span>
+                    <button class="btn" style="font-size:10px;padding:3px 10px;" onclick="toggleTrainPanel()">Show ▾</button>
+                </div>
+                <div class="train-panel hidden" id="trainPanel">
+                    <div class="train-row">
+                        <span class="train-label">Sign now →</span>
+                        <select class="train-select" id="trainLabel">
+                            <option value="">— label —</option>
+                            <option>A</option><option>B</option><option>C</option><option>D</option>
+                            <option>E</option><option>F</option><option>G</option><option>H</option>
+                            <option>I</option><option>J</option><option>K</option><option>L</option>
+                            <option>M</option><option>N</option><option>O</option><option>P</option>
+                            <option>Q</option><option>R</option><option>S</option><option>T</option>
+                            <option>U</option><option>V</option><option>W</option><option>X</option>
+                            <option>Y</option><option>Z</option>
+                            <option>0</option><option>1</option><option>2</option><option>3</option>
+                            <option>4</option><option>5</option><option>6</option><option>7</option>
+                            <option>8</option><option>9</option>
+                        </select>
+                        <button class="train-save" onclick="saveSample()">Save sample</button>
+                    </div>
+                    <div class="train-status" id="trainStatus"></div>
+                    <div class="train-counts" id="trainCounts"></div>
+                    <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
+                        <a href="asl-training-viewer.html" target="_blank" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent4);text-decoration:none;padding:3px 8px;border:1px solid rgba(192,132,252,.3);border-radius:4px;">Open viewer ↗</a>
+                        <button class="btn" style="font-size:10px;padding:3px 10px;" onclick="reloadUserBoosts()">Reload boosts</button>
+                    </div>
                 </div>
             </div>
 
@@ -321,7 +369,7 @@
     ══════════════════════════════════════════════════════════════════ */
     var LETTERS=['A','B','C','D','E','F','G','H','I','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y'];
 
-    function classifyLetter(tfLM, lm){
+    function classifyLetter(tfLM, lm, rawLM){
         var s={};
         LETTERS.forEach(function(l){s[l]=0;});
         if(estimator){
@@ -343,26 +391,52 @@
         var iDx=n[8].x-n[5].x, iDy=n[8].y-n[5].y, iAng=Math.atan2(iDy,iDx);
         var iUp=iAng<-1.1, iDn=iDy>0.25&&Math.abs(iDx)<Math.abs(iDy);
         var iHz=Math.abs(iAng)>1.3&&Math.abs(iAng)<Math.PI-0.2;
-        var iHk=n[8].y>n[5].y&&n[8].y<n[6].y+0.3;
+        /* X: index hooked — tip dropped below MCP but not fully curled past PIP */
+        var iHk=n[8].y>n[5].y&&n[8].y<n[6].y+0.25&&!iE;
         var ac=!iE&&!mE&&!rE&&!pE;
 
         if(ac){
+            /* ── S: thumb clearly over/across knuckles ── */
             if(tOK){s['S']+=6;s['A']-=4;s['E']-=4;s['M']-=2;s['N']-=2;s['T']-=3;}
+            /* ── E: thumb tucked under, close to palm ── */
             else if(tUI&&ti<0.5){s['E']+=5;s['A']-=3;s['S']-=4;}
-            else if(!tUI&&!tOK&&tAbs>0.25){s['A']+=5;s['S']-=4;s['E']-=3;}
-            if(tBIP||tBIJ){s['T']+=6;s['A']-=3;s['S']-=4;s['E']-=3;}
-            if(n[4].y>n[14].y){s['M']+=5;s['N']-=4;}
-            else if(n[4].y>n[10].y&&n[4].y<n[14].y){s['N']+=5;s['M']-=4;}
-            if(iHk){s['X']+=4;s['E']-=1;s['A']-=1;}else{s['X']-=4;}
+            /* ── A: thumb clearly out to side, NOT tucked ── */
+            else if(!tUI&&!tOK&&tAbs>0.30){s['A']+=6;s['S']-=5;s['E']-=4;s['M']-=3;s['N']-=3;}
+
+            /* ── T: thumb tip sits between index MCP(5) and index PIP(6) vertically ── */
+            /* Tighter than before — must be genuinely between those two joints */
+            if(tBIP){s['T']+=8;s['A']-=5;s['S']-=5;s['E']-=4;s['M']-=4;s['N']-=4;}
+            else if(tBIJ&&!tOK){s['T']+=4;s['A']-=2;s['S']-=2;}
+
+            /* ── M vs N: use how many fingertip-MCPs the thumb underlies ──
+               M: thumb tip below ring MCP (lm 13) — underlies 3 fingers
+               N: thumb tip below middle MCP (lm 9) but above ring MCP (lm 13) — underlies 2 */
+            var thumbBelowRingMCP = n[4].y > n[13].y;
+            var thumbBelowMidMCP  = n[4].y > n[9].y;
+            if(thumbBelowRingMCP){s['M']+=7;s['N']-=5;s['A']-=2;s['T']-=2;}
+            else if(thumbBelowMidMCP){s['N']+=7;s['M']-=5;s['A']-=2;s['T']-=2;}
+
+            /* ── X: hooked index — only valid if NOT matching M/N/T/S/E/A ── */
+            if(iHk&&!tOK&&!tBIP&&!tBIJ&&!tUI){s['X']+=6;s['E']-=2;s['A']-=2;s['S']-=2;}
+            else{s['X']-=5;}
         }
+
+        /* X can also appear when index is partially extended but hooked downward —
+           guard: other fingers must be fully curled */
+        if(!ac&&iHk&&!mE&&!rE&&!pE){s['X']+=5;s['E']-=2;}
 
         if(ti<0.38){s['O']+=6;s['C']-=5;}
         else if(ti>0.45&&ti<1.4){s['C']+=5;s['O']-=4;}
 
         if(iE&&mE&&!rE&&!pE){
-            if(im<0.18){s['R']+=7;s['U']-=5;s['V']-=5;}
-            else if(im<0.30){s['U']+=6;s['R']-=4;s['V']-=4;}
-            else{s['V']+=6;s['U']-=4;s['R']-=4;}
+            /* ── U/V/R: use finger-spread (im = index-to-middle tip distance) ──
+               R: very close/crossing (<0.16), U: together (0.16–0.26), V: spread (>0.26) */
+            if(im<0.16){s['R']+=8;s['U']-=6;s['V']-=6;}
+            else if(im<0.26){s['U']+=7;s['R']-=5;s['V']-=5;}
+            else{s['V']+=7;s['U']-=5;s['R']-=5;}
+            /* Extra U boost: fingers should be parallel (similar y positions) */
+            var fingerParallel=Math.abs(n[8].y-n[12].y)<0.2;
+            if(im<0.26&&fingerParallel){s['U']+=3;}
             if(d2(n,4,10)<0.55&&(tUp||d2(n,4,5)<0.55)){s['K']+=5;s['U']-=2;s['V']-=2;}
             else{s['K']-=3;}
             if(iHz){s['H']+=4;s['U']-=2;}
@@ -384,6 +458,7 @@
         if(mE&&rE&&pE&&ti<0.4){s['F']+=4;s['O']-=3;}
         if(iE&&!mE&&!rE&&!pE&&tEx&&iUp){s['L']+=4;}
 
+        applyUserBoosts(s, rawLM||tfLM);
         return smResult(s,LETTERS);
     }
 
@@ -392,7 +467,7 @@
     ══════════════════════════════════════════════════════════════════ */
     var NUMBERS=['0','1','2','3','4','5','6','7','8','9'];
 
-    function classifyNumber(lm){
+    function classifyNumber(lm, rawLM){
         var n=normLM(lm);
         var iE=ext(n,8,6,5),mE=ext(n,12,10,9),rE=ext(n,16,14,13),pE=ext(n,20,18,17);
         var iEL=ext(n,8,6,5,.1),mEL=ext(n,12,10,9,.1);
@@ -424,6 +499,7 @@
         if(ti<0.35&&!pE){s['9']+=2;s['6']-=2;}
         if(iE&&mE&&rE&&!pE){if(tr<0.45){s['7']+=3;s['3']-=2;}else{s['3']+=2;s['7']-=1;}}
         if(iE&&mE&&!rE&&!pE){if(tm<0.4){s['8']+=3;s['2']-=2;}else{s['2']+=2;s['8']-=1;}}
+        applyUserBoosts(s, rawLM);
         return smResult(s,NUMBERS);
     }
 
@@ -451,12 +527,15 @@
         if(motCD>0)return false;
         var n=normLM(lm);
         if(!(ext(n,8,6,5)&&!ext(n,12,10,9)&&!ext(n,16,14,13)&&!ext(n,20,18,17)))return false;
-        if(idxTrail.length<20||trailDist(idxTrail)<0.7)return false;
+        /* Lowered min trail length from 20→16 and min distance from 0.7→0.55
+           so Z is recognised with slightly shorter strokes */
+        if(idxTrail.length<16||trailDist(idxTrail)<0.55)return false;
         var nl=idxTrail.length;
         var t1=idxTrail.slice(0,Math.floor(nl*.33)),t2=idxTrail.slice(Math.floor(nl*.33),Math.floor(nl*.66)),t3=idxTrail.slice(Math.floor(nl*.66));
         if(t1.length<3||t2.length<3||t3.length<3)return false;
         var dx1=t1[t1.length-1].x-t1[0].x,dx2=t2[t2.length-1].x-t2[0].x,dy2=t2[t2.length-1].y-t2[0].y,dx3=t3[t3.length-1].x-t3[0].x;
-        return Math.abs(dx1)>0.15&&Math.abs(dx2)>0.12&&dy2>0.1&&Math.abs(dx3)>0.12&&Math.sign(dx1)!==Math.sign(dx2)&&Math.sign(dx3)===Math.sign(dx1);
+        /* Lowered horizontal thresholds from 0.15/0.12→0.12/0.10 and diagonal from 0.1→0.08 */
+        return Math.abs(dx1)>0.12&&Math.abs(dx2)>0.10&&dy2>0.08&&Math.abs(dx3)>0.10&&Math.sign(dx1)!==Math.sign(dx2)&&Math.sign(dx3)===Math.sign(dx1);
     }
 
     /* ══════════════════════════════════════════════════════════════════
@@ -484,26 +563,198 @@
     }
 
     /* ══════════════════════════════════════════════════════════════════
-       UI
+       INDEXEDDB — training data storage
+       Schema: store "samples" — {id, label, landmarks[[x,y,z]x21], ts}
+       On load we compute per-label mean landmark vectors and build
+       a boost table used by the classifier.
     ══════════════════════════════════════════════════════════════════ */
-    var sentence='',signsN=0;
+    var DB=null, DB_NAME='asl_training', DB_VER=1, STORE='samples';
+    var userBoosts={};   /* label → bias score added to classifier */
+    var sampleCounts={}; /* label → count */
+    var lastClassLM=null; /* latest classification landmarks for capture */
+
+    function openDB(cb){
+        var req=indexedDB.open(DB_NAME,DB_VER);
+        req.onupgradeneeded=function(e){
+            e.target.result.createObjectStore(STORE,{keyPath:'id',autoIncrement:true});
+        };
+        req.onsuccess=function(e){DB=e.target.result;cb&&cb();};
+        req.onerror=function(){console.warn('IndexedDB unavailable');};
+    }
+
+    function dbGetAll(cb){
+        if(!DB)return cb([]);
+        var tx=DB.transaction(STORE,'readonly');
+        tx.objectStore(STORE).getAll().onsuccess=function(e){cb(e.target.result);};
+    }
+
+    function dbAdd(record,cb){
+        if(!DB)return;
+        var tx=DB.transaction(STORE,'readwrite');
+        tx.objectStore(STORE).add(record).onsuccess=function(){cb&&cb();};
+    }
+
+    /* Build boost table from all saved samples.
+       For each label we compute the mean normalised landmarks,
+       then for any incoming frame we score cosine-style similarity
+       by comparing the current landmarks against each label's mean.
+       The boost is the similarity score scaled to ±4 and added to
+       the classifier scores map before softmax. */
+    function reloadUserBoosts(){
+        dbGetAll(function(rows){
+            sampleCounts={};
+            var means={};  /* label → sum of flat 63-dim vectors */
+            rows.forEach(function(r){
+                var l=r.label;
+                sampleCounts[l]=(sampleCounts[l]||0)+1;
+                if(!means[l])means[l]=new Array(63).fill(0);
+                var flat=flattenLM(r.landmarks);
+                flat.forEach(function(v,i){means[l][i]+=v;});
+            });
+            userBoosts={};
+            Object.keys(means).forEach(function(l){
+                var n=sampleCounts[l];
+                userBoosts[l]=means[l].map(function(v){return v/n;});
+            });
+            renderTrainCounts();
+        });
+    }
+
+    /* Flatten [[x,y,z]×21] → 63-dim vector, then L2-normalise */
+    function flattenLM(lm){
+        var v=[];
+        lm.forEach(function(p){v.push(p[0],p[1],p[2]);});
+        var mag=Math.sqrt(v.reduce(function(s,x){return s+x*x;},0))||1;
+        return v.map(function(x){return x/mag;});
+    }
+
+    /* Apply user boosts to a scores map (modifies in place) */
+    function applyUserBoosts(scores,tfLM){
+        if(!tfLM||Object.keys(userBoosts).length===0)return;
+        var incoming=flattenLM(tfLM);
+        Object.keys(userBoosts).forEach(function(l){
+            if(scores[l]===undefined)return;
+            var mean=userBoosts[l];
+            /* dot product = cosine similarity (both normalised) */
+            var dot=0;
+            incoming.forEach(function(v,i){dot+=v*mean[i];});
+            /* dot is in [-1,1], scale to boost ±5 */
+            scores[l]+=(dot-0.5)*10;
+        });
+    }
+
+    function saveSample(){
+        var lbl=document.getElementById('trainLabel').value;
+        if(!lbl){showTrainStatus('Pick a label first','var(--accent2)');return;}
+        if(!lastClassLM){showTrainStatus('No hand in frame','var(--accent2)');return;}
+        var record={label:lbl,landmarks:lastClassLM,ts:Date.now()};
+        dbAdd(record,function(){
+            showTrainStatus('Saved sample for '+lbl+' ✓','var(--accent)');
+            reloadUserBoosts();
+        });
+    }
+
+    function showTrainStatus(msg,col){
+        var el=document.getElementById('trainStatus');
+        el.textContent=msg;el.style.color=col||'var(--accent)';
+        clearTimeout(showTrainStatus._t);
+        showTrainStatus._t=setTimeout(function(){el.textContent='';},2200);
+    }
+
+    function renderTrainCounts(){
+        var el=document.getElementById('trainCounts');
+        if(!el)return;
+        var labels=['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z',
+            '0','1','2','3','4','5','6','7','8','9'];
+        el.innerHTML=labels.map(function(l){
+            var n=sampleCounts[l]||0;
+            return '<span class="tc'+(n>0?' has':'')+'" title="'+n+' samples">'+l+(n?':'+n:'')+'</span>';
+        }).join('');
+    }
+
+    function toggleTrainPanel(){
+        var p=document.getElementById('trainPanel');
+        var btn=p.previousElementSibling.querySelector('button');
+        var hidden=p.classList.toggle('hidden');
+        btn.textContent=hidden?'Show ▾':'Hide ▴';
+        if(!hidden)renderTrainCounts();
+    }
+
+    /* ══════════════════════════════════════════════════════════════════
+       CURSOR-AWARE SENTENCE BUILDER
+       sentence = array of {ch, type} objects
+       cursor = integer index 0..sentence.length (insertion point)
+    ══════════════════════════════════════════════════════════════════ */
+    var sentence=[],cursorPos=0,signsN=0;
+
+    function renderSentence(){
+        var el=document.getElementById('sentenceDisplay');
+        if(sentence.length===0){
+            el.className='sentence-display end-cursor';
+            el.innerHTML='';
+            return;
+        }
+        el.className='sentence-display'+(cursorPos===sentence.length?' end-cursor':'');
+        el.innerHTML=sentence.map(function(item,i){
+            var ch=item.ch===' '?'\u00a0':item.ch;
+            var cls='s-char'+(i===cursorPos?' at-cursor':'');
+            return '<span class="'+cls+'">'+ch+'</span>';
+        }).join('');
+    }
+
     function commitSign(ch,type){
-        sentence+=ch;signsN++;
+        sentence.splice(cursorPos,0,{ch:ch,type:type});
+        cursorPos++;signsN++;
         document.getElementById('signsAdded').textContent=signsN;
-        document.getElementById('sentenceText').textContent=sentence;
+        renderSentence();
         addChip(ch,type);
     }
-    function addSpace(){if(sentence.length&&sentence[sentence.length-1]!==' '){sentence+=' ';document.getElementById('sentenceText').textContent=sentence;addChip('␣','space');}}
-    function deleteChar(){if(sentence.length){sentence=sentence.slice(0,-1);document.getElementById('sentenceText').textContent=sentence;}}
-    function clearSentence(){sentence='';document.getElementById('sentenceText').textContent='';document.getElementById('historyRow').innerHTML='';}
-    function copySentence(){if(sentence)navigator.clipboard.writeText(sentence).catch(function(){});}
+
+    function cursorLeft(){if(cursorPos>0){cursorPos--;renderSentence();}}
+    function cursorRight(){if(cursorPos<sentence.length){cursorPos++;renderSentence();}}
+
+    function addSpace(){
+        var prev=sentence[cursorPos-1];
+        if(prev&&prev.ch===' ')return;
+        sentence.splice(cursorPos,0,{ch:' ',type:'space'});
+        cursorPos++;renderSentence();addChip('␣','space');
+    }
+
+    function deleteChar(){
+        if(cursorPos===0)return;
+        sentence.splice(cursorPos-1,1);
+        cursorPos--;renderSentence();
+    }
+
+    function clearSentence(){
+        sentence=[];cursorPos=0;renderSentence();
+        document.getElementById('historyRow').innerHTML='';
+    }
+
+    function copySentence(){
+        var txt=sentence.map(function(i){return i.ch;}).join('');
+        if(txt)navigator.clipboard.writeText(txt).catch(function(){});
+    }
+
     function addChip(ch,type){
         var row=document.getElementById('historyRow'),chip=document.createElement('span');
         chip.className='chip'+(type==='mot'?' mot':(type==='num'?' num':(type==='space'?' space':'')));
         chip.textContent=ch;row.appendChild(chip);
         while(row.children.length>24)row.removeChild(row.firstChild);
     }
+
+    /* Keyboard shortcuts: ←/→ move cursor, Backspace deletes */
+    document.addEventListener('keydown',function(e){
+        if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT'||e.target.tagName==='TEXTAREA')return;
+        if(e.key==='ArrowLeft'){e.preventDefault();cursorLeft();}
+        else if(e.key==='ArrowRight'){e.preventDefault();cursorRight();}
+        else if(e.key==='Backspace'){e.preventDefault();deleteChar();}
+    });
+
     function setStatus(msg,active){var el=document.getElementById('statusMsg');el.textContent=msg;el.className=active?'active':'';}
+
+    /* init DB on page load */
+    openDB(reloadUserBoosts);
 
     var curMode='letters';
     function toggleMode(){
@@ -660,6 +911,9 @@
         var drawLM   = smoothed.draw;    /* [[x,y,z], ...] — smooth for visuals */
         var classLM  = smoothed.classify; /* [[x,y,z], ...] — responsive for detection */
 
+        /* Store for training capture */
+        lastClassLM = classLM;
+
         /* Adapt classification landmarks to [{x,y,z}] normalised */
         var lm = adaptLM(classLM, ov.width, ov.height);
 
@@ -706,7 +960,7 @@
         mb.style.display='none';
 
         /* classifyLetter gets the classification-smoothed tfLM array */
-        var res2=curMode==='numbers'?classifyNumber(lm):classifyLetter(classLM,lm);
+        var res2=curMode==='numbers'?classifyNumber(lm,classLM):classifyLetter(classLM,lm,classLM);
         var isN=curMode==='numbers',pct=Math.round(res2.confidence*100);
         var dl=document.getElementById('detectLetter');
         dl.textContent=res2.label||'?';dl.className='detect-letter'+(isN?' num':'');
