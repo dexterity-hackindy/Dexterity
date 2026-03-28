@@ -568,7 +568,36 @@
         var el=document.getElementById('statusMsg');el.textContent=msg;el.className=active?'active':'';
     }
 
-    openDB(reloadSamples);
+    /* ── Auto-import training_data.json on first load ──────────────────
+       Fetches ./training_data.json from the same folder.
+       Merges by timestamp so reopening never creates duplicates.     */
+    function mergeAndReload(incoming) {
+        dbGetAll(function(existing) {
+            var existingTs = new Set(existing.map(function(r) { return r.ts; }));
+            var fresh = incoming.filter(function(r) { return !existingTs.has(r.ts); });
+            if (fresh.length === 0) { reloadSamples(); return; }
+            var tx = DB.transaction(STORE, 'readwrite');
+            var st = tx.objectStore(STORE);
+            var i = 0;
+            function next() {
+                if (i < fresh.length) {
+                    var r = Object.assign({}, fresh[i++]); delete r.id; st.add(r).onsuccess = next;
+                } else {
+                    reloadSamples();
+                }
+            }
+            next();
+        });
+    }
+
+    function tryAutoImport() {
+        fetch('./src/training.json?_=' + Date.now())
+            .then(function(res) { if (!res.ok) throw new Error('not found'); return res.json(); })
+            .then(function(data) { if (!Array.isArray(data) || !data.length) throw new Error('empty'); mergeAndReload(data); })
+            .catch(function() { reloadSamples(); });
+    }
+
+    openDB(tryAutoImport);
 
     var curMode='letters';
     function toggleMode() {
