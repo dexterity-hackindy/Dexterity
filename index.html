@@ -183,6 +183,41 @@
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/handpose@0.0.7/dist/handpose.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fingerpose@0.1.0/dist/fingerpose.min.js"></script>
 <script>
+    /* ─── LANDMARK SMOOTHER (EMA) ───
+       Applies exponential moving average to landmark positions.
+       Alpha controls smoothing: lower = smoother but more latency.
+       We use a higher alpha (less smoothing) for the raw lm passed
+       to classifiers, and a lower alpha for the drawn skeleton so
+       the visuals are butter-smooth without affecting detection.
+    */
+    var LM_COUNT = 21;
+    var smoothedDraw = null;   /* for drawing — very smooth */
+    var smoothedClass = null;  /* for classification — lighter smoothing */
+    var ALPHA_DRAW  = 0.25;    /* lower = smoother skeleton overlay */
+    var ALPHA_CLASS = 0.55;    /* higher = more responsive for detection */
+
+    function initSmoothers() {
+        smoothedDraw  = null;
+        smoothedClass = null;
+    }
+
+    function applyEMA(prev, current, alpha) {
+        if (!prev) return current.map(function(p) { return [p[0], p[1], p[2]]; });
+        return current.map(function(p, i) {
+            return [
+                prev[i][0] + alpha * (p[0] - prev[i][0]),
+                prev[i][1] + alpha * (p[1] - prev[i][1]),
+                prev[i][2] + alpha * (p[2] - prev[i][2])
+            ];
+        });
+    }
+
+    function smoothLandmarks(tfLM) {
+        smoothedDraw  = applyEMA(smoothedDraw,  tfLM, ALPHA_DRAW);
+        smoothedClass = applyEMA(smoothedClass, tfLM, ALPHA_CLASS);
+        return { draw: smoothedDraw, classify: smoothedClass };
+    }
+
     /* ─── geometry helpers ─── */
     function normLM(lm){
         var w=lm[0],sc=Math.hypot(lm[9].x-w.x,lm[9].y-w.y,lm[9].z-w.z)||0.001;
@@ -215,11 +250,6 @@
 
     /* ══════════════════════════════════════════════════════════════════
        FINGERPOSE SETUP
-       All 24 static ASL letters defined using fingerpose's curl/direction
-       descriptors. Because many letters share the same coarse shape
-       (A/E/M/N/S/T are all-curl fists; U/V/R differ only by spread),
-       fingerpose scores are used as a BASE and our raw-landmark
-       disambiguation adds decisive boosts for confusable pairs.
     ══════════════════════════════════════════════════════════════════ */
     var estimator=null;
 
@@ -239,93 +269,46 @@
         }
 
         var gestures=[
-            // A: fist, thumb to side (not tucked, not over fingers)
             mkG('A',[[F.Thumb,NC],[F.Index,FuC],[F.Middle,FuC],[F.Ring,FuC],[F.Pinky,FuC]],
                 [[F.Thumb,HR,0.9],[F.Thumb,DUR,0.9]]),
-
-            // B: all 4 fingers straight up, thumb tucked
             mkG('B',[[F.Thumb,FuC],[F.Index,NC],[F.Middle,NC],[F.Ring,NC],[F.Pinky,NC]],
                 [[F.Index,VU],[F.Middle,VU],[F.Ring,VU],[F.Pinky,VU]]),
-
-            // C: all fingers half-curl forming a cup
             mkG('C',[[F.Thumb,NC,0.8],[F.Index,HC],[F.Middle,HC],[F.Ring,HC],[F.Pinky,HC,0.8]],
                 [[F.Thumb,DUR,0.7],[F.Index,DUR,0.5],[F.Index,HR,0.5]]),
-
-            // D: index straight up, others curl to touch thumb
             mkG('D',[[F.Thumb,HC,0.8],[F.Index,NC],[F.Middle,FuC],[F.Ring,FuC],[F.Pinky,FuC]],
                 [[F.Index,VU]]),
-
-            // E: all fingers hooked down (full curl), thumb tucked under
             mkG('E',[[F.Thumb,FuC],[F.Index,FuC],[F.Middle,FuC],[F.Ring,FuC],[F.Pinky,FuC]]),
-
-            // F: index+thumb pinch, middle/ring/pinky extended up
             mkG('F',[[F.Thumb,HC],[F.Index,HC],[F.Middle,NC],[F.Ring,NC],[F.Pinky,NC]],
                 [[F.Middle,VU],[F.Ring,VU],[F.Pinky,VU]]),
-
-            // G: index+thumb point horizontally, others closed
             mkG('G',[[F.Thumb,NC],[F.Index,NC],[F.Middle,FuC],[F.Ring,FuC],[F.Pinky,FuC]],
                 [[F.Index,HR,0.9],[F.Index,HL,0.9],[F.Thumb,HR,0.8],[F.Thumb,HL,0.8]]),
-
-            // H: index+middle point sideways together, others closed
             mkG('H',[[F.Thumb,FuC,0.8],[F.Index,NC],[F.Middle,NC],[F.Ring,FuC],[F.Pinky,FuC]],
                 [[F.Index,HR,0.9],[F.Index,HL,0.9],[F.Middle,HR,0.9],[F.Middle,HL,0.9]]),
-
-            // I: only pinky up
             mkG('I',[[F.Thumb,FuC,0.7],[F.Index,FuC],[F.Middle,FuC],[F.Ring,FuC],[F.Pinky,NC]],
                 [[F.Pinky,VU]]),
-
-            // K: index+middle up, thumb contacts index from side
             mkG('K',[[F.Thumb,NC],[F.Index,NC],[F.Middle,NC],[F.Ring,FuC],[F.Pinky,FuC]],
                 [[F.Index,VU],[F.Middle,VU,0.8],[F.Thumb,DUR,0.8]]),
-
-            // L: index up, thumb out horizontal (L-shape)
             mkG('L',[[F.Thumb,NC],[F.Index,NC],[F.Middle,FuC],[F.Ring,FuC],[F.Pinky,FuC]],
                 [[F.Index,VU],[F.Thumb,HR,0.9],[F.Thumb,HL,0.9],[F.Thumb,DUR,0.7]]),
-
-            // M: index+middle+ring curl over thumb (all curl — distinguished by landmarks)
             mkG('M',[[F.Thumb,FuC],[F.Index,FuC],[F.Middle,FuC],[F.Ring,FuC],[F.Pinky,FuC]]),
-
-            // N: index+middle curl over thumb only (landmark-disambiguated from M)
             mkG('N',[[F.Thumb,FuC],[F.Index,FuC],[F.Middle,FuC],[F.Ring,FuC],[F.Pinky,FuC]]),
-
-            // O: all fingers form an O (half curl meeting thumb)
             mkG('O',[[F.Thumb,HC,0.8],[F.Index,HC],[F.Middle,HC],[F.Ring,HC],[F.Pinky,HC]]),
-
-            // P: index pointing downward
             mkG('P',[[F.Thumb,NC,0.8],[F.Index,NC],[F.Middle,HC,0.7],[F.Ring,FuC],[F.Pinky,FuC]],
                 [[F.Index,VD],[F.Index,DDR,0.8],[F.Index,DDL,0.8]]),
-
-            // Q: G shape rotated downward
             mkG('Q',[[F.Thumb,NC,0.8],[F.Index,NC],[F.Middle,FuC],[F.Ring,FuC],[F.Pinky,FuC]],
                 [[F.Index,VD],[F.Index,DDR,0.8],[F.Thumb,VD,0.7]]),
-
-            // R: index+middle both up (crossing landmark-disambiguated)
             mkG('R',[[F.Thumb,FuC,0.7],[F.Index,NC],[F.Middle,NC],[F.Ring,FuC],[F.Pinky,FuC]],
                 [[F.Index,VU],[F.Middle,VU]]),
-
-            // S: fist, thumb wrapped over curled fingers
             mkG('S',[[F.Thumb,HC],[F.Index,FuC],[F.Middle,FuC],[F.Ring,FuC],[F.Pinky,FuC]]),
-
-            // T: thumb tucked between index and middle knuckles
             mkG('T',[[F.Thumb,HC],[F.Index,FuC],[F.Middle,FuC],[F.Ring,FuC],[F.Pinky,FuC]]),
-
-            // U: index+middle up, parallel (close together)
             mkG('U',[[F.Thumb,FuC,0.7],[F.Index,NC],[F.Middle,NC],[F.Ring,FuC],[F.Pinky,FuC]],
                 [[F.Index,VU],[F.Middle,VU]]),
-
-            // V: index+middle up, spread apart (peace sign)
             mkG('V',[[F.Thumb,FuC,0.7],[F.Index,NC],[F.Middle,NC],[F.Ring,FuC],[F.Pinky,FuC]],
                 [[F.Index,VU],[F.Middle,VU]]),
-
-            // W: index+middle+ring up
             mkG('W',[[F.Thumb,FuC,0.7],[F.Index,NC],[F.Middle,NC],[F.Ring,NC],[F.Pinky,FuC]],
                 [[F.Index,VU],[F.Middle,VU],[F.Ring,VU]]),
-
-            // X: index hooked (half curl), others closed
             mkG('X',[[F.Thumb,FuC,0.7],[F.Index,HC],[F.Middle,FuC],[F.Ring,FuC],[F.Pinky,FuC]],
                 [[F.Index,VD,0.7],[F.Index,DDR,0.5]]),
-
-            // Y: thumb + pinky extended, others closed
             mkG('Y',[[F.Thumb,NC],[F.Index,FuC],[F.Middle,FuC],[F.Ring,FuC],[F.Pinky,NC]],
                 [[F.Thumb,HR,0.9],[F.Thumb,DUR,0.7],[F.Pinky,VU,0.7],[F.Pinky,DUL,0.7]])
         ];
@@ -334,16 +317,11 @@
     }
 
     /* ══════════════════════════════════════════════════════════════════
-       LETTER CLASSIFIER  — fingerpose base + raw-landmark disambiguation
-       fingerpose gives us curl/direction scores (0–10) for each letter.
-       For confusable pairs (A/E/S/M/N/T, U/V/R/K, D/P/G/Q, I/Y, O/C)
-       we add strong landmark-derived boosts so the classifier can still
-       tell them apart despite fingerpose's coarser resolution.
+       LETTER CLASSIFIER
     ══════════════════════════════════════════════════════════════════ */
     var LETTERS=['A','B','C','D','E','F','G','H','I','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y'];
 
     function classifyLetter(tfLM, lm){
-        /* ── fingerpose base scores (scale 0–10 → 0–12) ── */
         var s={};
         LETTERS.forEach(function(l){s[l]=0;});
         if(estimator){
@@ -353,7 +331,6 @@
             });
         }
 
-        /* ── raw landmark features for disambiguation ── */
         var n=normLM(lm);
         var iE=ext(n,8,6,5),  mE=ext(n,12,10,9), rE=ext(n,16,14,13), pE=ext(n,20,18,17);
         var iEL=ext(n,8,6,5,.1), mEL=ext(n,12,10,9,.1);
@@ -369,7 +346,6 @@
         var iHk=n[8].y>n[5].y&&n[8].y<n[6].y+0.3;
         var ac=!iE&&!mE&&!rE&&!pE;
 
-        /* ── A/E/S/M/N/T disambiguation (all-curl fists) ── */
         if(ac){
             if(tOK){s['S']+=6;s['A']-=4;s['E']-=4;s['M']-=2;s['N']-=2;s['T']-=3;}
             else if(tUI&&ti<0.5){s['E']+=5;s['A']-=3;s['S']-=4;}
@@ -380,11 +356,9 @@
             if(iHk){s['X']+=4;s['E']-=1;s['A']-=1;}else{s['X']-=4;}
         }
 
-        /* ── O vs C ── */
         if(ti<0.38){s['O']+=6;s['C']-=5;}
         else if(ti>0.45&&ti<1.4){s['C']+=5;s['O']-=4;}
 
-        /* ── R vs U vs V vs K vs H ── */
         if(iE&&mE&&!rE&&!pE){
             if(im<0.18){s['R']+=7;s['U']-=5;s['V']-=5;}
             else if(im<0.30){s['U']+=6;s['R']-=4;s['V']-=4;}
@@ -395,7 +369,6 @@
             else if(iUp){s['U']+=2;s['H']-=3;}
         }
 
-        /* ── D vs P vs G vs Q ── */
         if(iEL&&!mE&&!rE&&!pE){
             if(iUp){s['D']+=5;s['P']-=4;s['Q']-=3;}
             if(iDn){s['P']+=5;s['D']-=4;}
@@ -403,23 +376,19 @@
             else if(iDn||n[8].y>n[5].y+0.2){s['Q']+=4;s['G']-=3;}
         }
 
-        /* ── I vs Y ── */
         if(pE){
             if(tEx&&tAbs>0.3){s['Y']+=5;s['I']-=4;}
             else{s['I']+=4;s['Y']-=3;}
         }
 
-        /* ── F boost (middle/ring/pinky up + pinch) ── */
         if(mE&&rE&&pE&&ti<0.4){s['F']+=4;s['O']-=3;}
-
-        /* ── L: thumb+index L-shape ── */
         if(iE&&!mE&&!rE&&!pE&&tEx&&iUp){s['L']+=4;}
 
         return smResult(s,LETTERS);
     }
 
     /* ══════════════════════════════════════════════════════════════════
-       NUMBER CLASSIFIER  (unchanged — raw landmarks)
+       NUMBER CLASSIFIER
     ══════════════════════════════════════════════════════════════════ */
     var NUMBERS=['0','1','2','3','4','5','6','7','8','9'];
 
@@ -459,7 +428,7 @@
     }
 
     /* ══════════════════════════════════════════════════════════════════
-       J & Z MOTION DETECTION  (unchanged)
+       J & Z MOTION DETECTION
     ══════════════════════════════════════════════════════════════════ */
     var TRAIL_LEN=30,idxTrail=[],pkTrail=[],motCD=0;
     function pushTrail(lm){
@@ -536,7 +505,6 @@
     }
     function setStatus(msg,active){var el=document.getElementById('statusMsg');el.textContent=msg;el.className=active?'active':'';}
 
-    /* Mode toggle */
     var curMode='letters';
     function toggleMode(){
         curMode=curMode==='letters'?'numbers':'letters';
@@ -546,7 +514,6 @@
         holdCand=null;holdStart=null;
     }
 
-    /* Reference grid */
     (function(){
         var items=[
             {l:'A'},{l:'B'},{l:'C'},{l:'D'},{l:'E'},{l:'F'},
@@ -577,14 +544,11 @@
         document.getElementById('modelBadge').textContent='⟳ loading tf.js…';
     });
 
-    /* ══════════════════════════════════════════════════════════════════
-       MEDIAPIPE-COMPATIBLE CONSTANTS (same landmark indices)
-    ══════════════════════════════════════════════════════════════════ */
     var CONN=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
     var TIPS=[4,8,12,16,20];
 
     /* ══════════════════════════════════════════════════════════════════
-       CAMERA & INFERENCE  (TF.js handpose)
+       CAMERA & INFERENCE
     ══════════════════════════════════════════════════════════════════ */
     var stream=null, animF=null, tfModel=null;
     var vid=null, ov=null, octx=null, tc=null, tctx=null, scrTrail=[];
@@ -609,7 +573,6 @@
             document.getElementById('modelBadge').textContent='⟳ loading model…';
             document.getElementById('modelBadge').className='badge badge-loading';
 
-            /* Load TF.js handpose model */
             tfModel=await handpose.load({
                 detectionConfidence:0.8,
                 maxContinuousChecks:5,
@@ -617,8 +580,8 @@
                 scoreThreshold:0.75
             });
 
-            /* Setup fingerpose gesture estimator */
             setupFingerpose();
+            initSmoothers();
 
             document.getElementById('modelBadge').textContent='✓ fingerpose ready';
             document.getElementById('modelBadge').className='badge badge-ready';
@@ -643,7 +606,9 @@
         document.getElementById('confPct').textContent='—';
         document.getElementById('motBadge').style.display='none';
         updateHold(null,false,false);highlightRef(null);
-        idxTrail=[];pkTrail=[];scrTrail=[];setStatus('Camera off');
+        idxTrail=[];pkTrail=[];scrTrail=[];
+        initSmoothers();
+        setStatus('Camera off');
     }
 
     async function loop(){
@@ -676,26 +641,36 @@
             mb.style.display='none';
             updateHold(null,false,false);highlightRef(null);
             idxTrail=[];pkTrail=[];scrTrail=[];
+            /* Reset smoothers when hand disappears so they don't
+               carry stale positions into the next detection */
+            initSmoothers();
             tctx.clearRect(0,0,tc.width,tc.height);
             document.getElementById('topScores').innerHTML='—';
             document.getElementById('debugInfo').textContent='';
             return;
         }
 
-        /* TF.js handpose: landmarks = [[x,y,z], ...] in pixel coords */
+        /* Raw landmarks from TF.js */
         var tfLM=preds[0].landmarks;
 
-        /* Adapt to [{x,y,z}] normalised for our geometry functions */
-        var lm=adaptLM(tfLM,ov.width,ov.height);
+        /* Apply EMA smoothing — get two versions:
+           - smoothedDraw: very smooth, used for skeleton rendering
+           - smoothedClass: lighter smoothing, used for classification */
+        var smoothed = smoothLandmarks(tfLM);
+        var drawLM   = smoothed.draw;    /* [[x,y,z], ...] — smooth for visuals */
+        var classLM  = smoothed.classify; /* [[x,y,z], ...] — responsive for detection */
 
-        /* Draw skeleton */
+        /* Adapt classification landmarks to [{x,y,z}] normalised */
+        var lm = adaptLM(classLM, ov.width, ov.height);
+
+        /* Draw skeleton using the smoothed draw landmarks */
         CONN.forEach(function(p){
             octx.beginPath();
-            octx.moveTo(tfLM[p[0]][0],tfLM[p[0]][1]);
-            octx.lineTo(tfLM[p[1]][0],tfLM[p[1]][1]);
+            octx.moveTo(drawLM[p[0]][0], drawLM[p[0]][1]);
+            octx.lineTo(drawLM[p[1]][0], drawLM[p[1]][1]);
             octx.strokeStyle='rgba(124,255,212,.45)';octx.lineWidth=2;octx.stroke();
         });
-        tfLM.forEach(function(p,i){
+        drawLM.forEach(function(p,i){
             var tip=TIPS.indexOf(i)>=0;
             octx.beginPath();octx.arc(p[0],p[1],tip?7:4,0,2*Math.PI);
             octx.fillStyle=tip?'rgba(255,209,102,.95)':'rgba(200,210,255,.85)';octx.fill();
@@ -703,8 +678,8 @@
             octx.lineWidth=1.5;octx.stroke();
         });
 
-        /* Screen trail */
-        scrTrail.push({x:tfLM[8][0],y:tfLM[8][1]});
+        /* Screen trail uses draw landmarks for visual smoothness */
+        scrTrail.push({x:drawLM[8][0],y:drawLM[8][1]});
         if(scrTrail.length>TRAIL_LEN)scrTrail.shift();
         tctx.clearRect(0,0,tc.width,tc.height);
         for(var i=1;i<scrTrail.length;i++){
@@ -713,9 +688,9 @@
             tctx.beginPath();tctx.moveTo(scrTrail[i-1].x,scrTrail[i-1].y);tctx.lineTo(scrTrail[i].x,scrTrail[i].y);tctx.stroke();
         }
 
+        /* Motion detection + classification use the responsive lm */
         pushTrail(lm);
 
-        /* Motion detection */
         if(curMode==='letters'){
             var isJ=detectJ(lm),isZ=detectZ(lm);
             if(isJ||isZ){
@@ -730,7 +705,8 @@
         }
         mb.style.display='none';
 
-        var res2=curMode==='numbers'?classifyNumber(lm):classifyLetter(tfLM,lm);
+        /* classifyLetter gets the classification-smoothed tfLM array */
+        var res2=curMode==='numbers'?classifyNumber(lm):classifyLetter(classLM,lm);
         var isN=curMode==='numbers',pct=Math.round(res2.confidence*100);
         var dl=document.getElementById('detectLetter');
         dl.textContent=res2.label||'?';dl.className='detect-letter'+(isN?' num':'');
@@ -741,7 +717,7 @@
         document.getElementById('topScores').innerHTML=res2.top.map(function(sc,i){
             return '<span class="sc'+(i===0?(isN?' best-num':' best'):'')+'">'+ sc.l+': '+sc.s+' ('+sc.p+'%)</span>';
         }).join('');
-        document.getElementById('debugInfo').textContent='fingerpose + landmarks · mode: '+curMode;
+        document.getElementById('debugInfo').textContent='fingerpose + landmarks · mode: '+curMode+' · smoothing: draw='+ALPHA_DRAW+' class='+ALPHA_CLASS;
 
         highlightRef(res2.label);
         updateHold(res2.confidence>0.28?res2.label:null,false,isN);
