@@ -55,6 +55,7 @@
         <button class="btn danger" onclick="deleteAll()">Delete all</button>
         <button class="btn accent" onclick="loadAll()">Refresh</button>
         <span id="totalMsg" style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);"></span>
+        <span id="autoImportStatus" style="font-family:'DM Mono',monospace;font-size:11px;display:none;padding:3px 8px;border-radius:4px;background:rgba(124,255,212,.07);border:1px solid rgba(124,255,212,.2);"></span>
     </div>
 
     <div class="summary" id="summaryGrid"></div>
@@ -239,7 +240,56 @@
         e.target.value='';
     }
 
-    openDB(loadAll);
+    /* ── Auto-import training_data.json on first load ──────────────────
+       On every page load we try to fetch ./training_data.json.
+       • If DB is empty  → import it automatically, no prompt.
+       • If DB has data  → merge new records in (dedup by timestamp),
+                           so you never get doubles but also never lose
+                           samples you added manually.
+       Put training_data.json in the same folder as this file.        */
+    function setAutoStatus(msg, color) {
+        var el = document.getElementById('autoImportStatus');
+        if (!el) return;
+        el.textContent = msg;
+        el.style.color = color || 'var(--accent)';
+        el.style.display = msg ? 'inline' : 'none';
+    }
+
+    function mergeRecords(incoming) {
+        /* Collect existing timestamps for dedup */
+        dbGetAll(function(existing) {
+            var existingTs = new Set(existing.map(function(r) { return r.ts; }));
+            var fresh = incoming.filter(function(r) { return !existingTs.has(r.ts); });
+            if (fresh.length === 0) {
+                setAutoStatus('training_data.json — already up to date', 'var(--muted)');
+                loadAll();
+                return;
+            }
+            dbAddBatch(fresh, function() {
+                setAutoStatus('training_data.json — auto-loaded ' + fresh.length + ' new sample' + (fresh.length !== 1 ? 's' : '') + ' ✓', 'var(--accent)');
+                loadAll();
+            });
+        });
+    }
+
+    function tryAutoImport() {
+        fetch('./src/training.json?_=' + Date.now())
+            .then(function(res) {
+                if (!res.ok) throw new Error('not found');
+                return res.json();
+            })
+            .then(function(data) {
+                if (!Array.isArray(data) || data.length === 0) throw new Error('empty');
+                mergeRecords(data);
+            })
+            .catch(function() {
+                /* No file or fetch blocked — silent, just load DB normally */
+                setAutoStatus('', '');
+                loadAll();
+            });
+    }
+
+    openDB(tryAutoImport);
 </script>
 </body>
 </html>
