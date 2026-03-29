@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Dexterity — ASL Translator</title>
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="src/images/dexterity_logo_transparent.png">
     <style>
         :root {
             --bg:#050a12;--surface:#090f1a;--border:#0e2236;
@@ -45,6 +46,16 @@
         .btn.mode-num{background:rgba(59,130,246,.15);border-color:var(--accent4);color:var(--accent4);}
         #statusMsg{font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);margin-left:4px;}
         #statusMsg.active{color:var(--accent);}
+
+        /* ── HOLD DURATION CONTROL ── */
+        .hold-control{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 14px;flex-wrap:wrap;}
+        .hold-control-label{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);white-space:nowrap;}
+        .hold-control-label span{color:var(--accent);font-weight:500;}
+        .hold-slider{-webkit-appearance:none;appearance:none;height:4px;flex:1;min-width:100px;max-width:200px;background:var(--border);border-radius:2px;outline:none;cursor:pointer;}
+        .hold-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);border:2px solid rgba(0,212,255,.5);cursor:pointer;transition:transform .1s;}
+        .hold-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--accent);border:2px solid rgba(0,212,255,.5);cursor:pointer;}
+        .hold-slider:hover::-webkit-slider-thumb{transform:scale(1.2);}
+        .hold-val{font-family:'DM Mono',monospace;font-size:12px;font-weight:500;color:var(--accent);min-width:44px;text-align:right;}
 
         .video-wrapper{position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:#000;aspect-ratio:4/3;
             box-shadow:0 0 0 1px rgba(0,212,255,.06),0 16px 48px rgba(0,0,0,.6);}
@@ -215,6 +226,22 @@
                 <span id="statusMsg">Camera off</span>
             </div>
 
+            <!-- ── HOLD DURATION CONTROL ── -->
+            <div class="hold-control">
+                <span class="hold-control-label">Hold duration: <span id="holdValDisplay">0.3s</span></span>
+                <input
+                        type="range"
+                        class="hold-slider"
+                        id="holdSlider"
+                        min="300"
+                        max="3000"
+                        step="100"
+                        value="1200"
+                        oninput="updateHoldDuration(this.value)"
+                />
+                <span class="hold-val" id="holdValRight">3.0s</span>
+            </div>
+
             <div class="nodata-banner" id="nodataBanner">
                 ⚠ No training samples for this mode yet — open Training Data and add some!
             </div>
@@ -357,6 +384,23 @@
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 <script>
+    /* ══════════════════════════════════════════════════════════════════
+       HOLD DURATION — configurable via slider
+    ══════════════════════════════════════════════════════════════════ */
+    var HOLD_MS = 1200;
+
+    function updateHoldDuration(ms) {
+        HOLD_MS = parseInt(ms, 10);
+        var secs = (HOLD_MS / 1000).toFixed(1) + 's';
+        /* Reset any in-progress hold so the new duration takes effect immediately */
+        holdCand = null;
+        holdStart = null;
+        var arc = document.getElementById('holdArc');
+        if (arc) { arc.style.strokeDashoffset = 113; }
+        var lbl = document.getElementById('holdLabel');
+        if (lbl) { lbl.innerHTML = 'hold<br>sign'; }
+    }
+
     /* ══════════════════════════════════════════════════════════════════
        DEXTER — ASL hand-shape knowledge base
     ══════════════════════════════════════════════════════════════════ */
@@ -551,9 +595,9 @@
     }
 
     /* ══════════════════════════════════════════════════════════════════
-       HOLD LOGIC
+       HOLD LOGIC  (uses HOLD_MS — now user-configurable)
     ══════════════════════════════════════════════════════════════════ */
-    var HOLD_MS=1200, holdCand=null, holdStart=null;
+    var holdCand=null, holdStart=null;
 
     function updateHold(label, isMotion, isNum) {
         var arc=document.getElementById('holdArc'),lbl=document.getElementById('holdLabel'),C=113;
