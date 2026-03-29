@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dexterity — ASL Translator</title>
+    <title>Dexterity — Sign Language Translator</title>
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="icon" type="image/x-icon" href="src/images/dexterity_logo_transparent.png">
     <style>
@@ -203,6 +203,54 @@
         .dexter-done-btn.num{background:var(--accent4);color:#fff;}
         .dexter-done-btn.num:hover{background:#2563eb;}
 
+        /* ═══════════════════════════════════════════
+           PASSWORD MODAL
+        ═══════════════════════════════════════════ */
+        .pw-backdrop{
+            position:fixed;inset:0;z-index:9100;
+            background:rgba(2,6,14,.82);backdrop-filter:blur(6px);
+            display:flex;align-items:center;justify-content:center;
+            opacity:0;pointer-events:none;transition:opacity .18s ease;
+        }
+        .pw-backdrop.open{opacity:1;pointer-events:all;}
+        .pw-dialog{
+            background:var(--card);
+            border:1px solid rgba(0,212,255,.14);
+            border-radius:14px;width:min(340px,90vw);
+            padding:24px 24px 20px;
+            box-shadow:0 24px 64px rgba(0,0,0,.7),0 0 0 1px rgba(0,212,255,.05);
+            transform:translateY(14px) scale(.97);
+            transition:transform .22s cubic-bezier(.34,1.56,.64,1);
+        }
+        .pw-backdrop.open .pw-dialog{transform:none;}
+        .pw-title{font-size:14px;font-weight:800;letter-spacing:-.2px;margin-bottom:4px;}
+        .pw-title span{background:linear-gradient(135deg,#00d4ff,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+        .pw-sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:16px;letter-spacing:.04em;}
+        .pw-input-wrap{position:relative;margin-bottom:10px;}
+        .pw-input{
+            width:100%;font-family:'DM Mono',monospace;font-size:14px;
+            background:var(--surface);border:1px solid var(--border);
+            color:var(--text);border-radius:7px;padding:9px 38px 9px 12px;
+            outline:none;transition:border-color .15s;letter-spacing:.08em;
+        }
+        .pw-input:focus{border-color:rgba(0,212,255,.45);box-shadow:0 0 0 2px rgba(0,212,255,.08);}
+        .pw-toggle{
+            position:absolute;right:10px;top:50%;transform:translateY(-50%);
+            background:none;border:none;cursor:pointer;
+            font-size:14px;color:var(--muted);padding:2px;line-height:1;
+            transition:color .15s;
+        }
+        .pw-toggle:hover{color:var(--accent);}
+        .pw-error{
+            font-family:'DM Mono',monospace;font-size:11px;
+            color:var(--accent2);min-height:16px;margin-bottom:10px;
+        }
+        .pw-actions{display:flex;gap:8px;justify-content:flex-end;}
+        .pw-cancel{font-family:'Syne',sans-serif;font-size:12px;font-weight:600;padding:7px 16px;border-radius:7px;background:transparent;border:1px solid var(--border);color:var(--muted);cursor:pointer;transition:all .15s;}
+        .pw-cancel:hover{border-color:rgba(255,107,107,.4);color:var(--accent2);}
+        .pw-submit{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;padding:7px 18px;border-radius:7px;background:linear-gradient(135deg,#0090c0,#1a60d0);color:#fff;border:none;cursor:pointer;transition:all .15s;box-shadow:0 0 14px rgba(0,150,220,.25);}
+        .pw-submit:hover{background:linear-gradient(135deg,#00aad8,#2470e8);}
+
         @media(max-width:800px){.layout{grid-template-columns:1fr;}}
     </style>
 </head>
@@ -356,6 +404,25 @@
 </div>
 
 <!-- ═══════════════════════════════════════════
+     PASSWORD MODAL
+════════════════════════════════════════════ -->
+<div class="pw-backdrop" id="pwBackdrop">
+    <div class="pw-dialog">
+        <div class="pw-title">Training <span>Access</span></div>
+        <div class="pw-sub">// enter password to unlock training panel</div>
+        <div class="pw-input-wrap">
+            <input class="pw-input" type="password" id="pwInput" placeholder="password" autocomplete="off" />
+            <button class="pw-toggle" id="pwToggle" onclick="togglePwVisibility()" tabindex="-1">👁</button>
+        </div>
+        <div class="pw-error" id="pwError"></div>
+        <div class="pw-actions">
+            <button class="pw-cancel" onclick="closePwModal()">Cancel</button>
+            <button class="pw-submit" onclick="submitPassword()">Unlock</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
      DEXTER DIALOG
 ════════════════════════════════════════════ -->
 <div class="dexter-backdrop" id="dexterBackdrop" onclick="closeDexterIfBackdrop(event)">
@@ -479,7 +546,80 @@
         if (e.target === document.getElementById('dexterBackdrop')) closeDexter();
     }
 
-    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeDexter(); });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            if (document.getElementById('pwBackdrop').classList.contains('open')) { closePwModal(); return; }
+            closeDexter();
+        }
+        if (e.key === 'Enter' && document.getElementById('pwBackdrop').classList.contains('open')) {
+            e.preventDefault(); submitPassword();
+        }
+    });
+
+    /* ── TRAINING PANEL PASSWORD ── */
+    var TRAIN_PASSWORD = 'dexterity'; // ← change this to your own password
+    var _trainUnlocked = false;
+
+    function toggleTrainPanel() {
+        var p = document.getElementById('trainPanel');
+        // Always allow closing without a password
+        if (!p.classList.contains('hidden')) {
+            p.classList.add('hidden');
+            p.previousElementSibling.querySelector('button').textContent = 'Show ▾';
+            return;
+        }
+        // Already unlocked this session — open directly
+        if (_trainUnlocked) {
+            p.classList.remove('hidden');
+            p.previousElementSibling.querySelector('button').textContent = 'Hide ▴';
+            renderTrainCounts();
+            return;
+        }
+        // Need password
+        openPwModal();
+    }
+
+    function openPwModal() {
+        var modal = document.getElementById('pwBackdrop');
+        var input = document.getElementById('pwInput');
+        document.getElementById('pwError').textContent = '';
+        input.value = '';
+        input.type = 'password';
+        document.getElementById('pwToggle').textContent = '👁';
+        modal.classList.add('open');
+        document.body.style.overflow = 'hidden';
+        setTimeout(function(){ input.focus(); }, 120);
+    }
+
+    function closePwModal() {
+        document.getElementById('pwBackdrop').classList.remove('open');
+        document.body.style.overflow = '';
+    }
+
+    function submitPassword() {
+        var val = document.getElementById('pwInput').value;
+        var err = document.getElementById('pwError');
+        if (val === TRAIN_PASSWORD) {
+            _trainUnlocked = true;
+            closePwModal();
+            var p = document.getElementById('trainPanel');
+            p.classList.remove('hidden');
+            p.previousElementSibling.querySelector('button').textContent = 'Hide ▴';
+            renderTrainCounts();
+        } else {
+            err.textContent = '✖ incorrect password';
+            var input = document.getElementById('pwInput');
+            input.value = '';
+            input.focus();
+        }
+    }
+
+    function togglePwVisibility() {
+        var input = document.getElementById('pwInput');
+        var btn = document.getElementById('pwToggle');
+        if (input.type === 'password') { input.type = 'text'; btn.textContent = '🙈'; }
+        else { input.type = 'password'; btn.textContent = '👁'; }
+    }
 
     /* ─── LANDMARK SMOOTHER (EMA) ─── */
     var smoothedDraw = null, smoothedClass = null;
@@ -694,14 +834,6 @@
             var n=sampleCounts[l]||0;
             return '<span class="tc'+(n>0?' has':'')+'" title="'+n+' samples">'+l+(n?':'+n:'')+'</span>';
         }).join('');
-    }
-
-    function toggleTrainPanel() {
-        var p=document.getElementById('trainPanel');
-        var btn=p.previousElementSibling.querySelector('button');
-        var hidden=p.classList.toggle('hidden');
-        btn.textContent=hidden?'Show ▾':'Hide ▴';
-        if(!hidden)renderTrainCounts();
     }
 
     /* ══════════════════════════════════════════════════════════════════
