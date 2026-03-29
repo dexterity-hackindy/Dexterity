@@ -413,7 +413,7 @@
 
                     <!-- ── CUSTOM LABELS ── -->
                     <div class="custom-label-section">
-                        <div class="custom-label-title">Custom labels <span style="color:var(--muted);font-size:9px;margin-left:4px;">(session only)</span></div>
+                        <div class="custom-label-title">Custom labels <span style="color:var(--muted);font-size:9px;margin-left:4px;"></span></div>
                         <div class="custom-add-row">
                             <input class="custom-input" id="customLabelInput" type="text" placeholder="e.g. HELLO or YES" maxlength="20"
                                    onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomLabel();}" />
@@ -421,8 +421,7 @@
                         </div>
                         <div class="custom-chips" id="customChips"></div>
                         <div class="custom-hint">
-                            Type a word or phrase, press Add. Then select it in the dropdown above to train samples.
-                            Custom labels won't be saved after closing the page.
+                            Type a word or phrase, press Add. Click the reload samples button to see if this label already has data. If not, select it from the labels and train with the save sample button.
                         </div>
                     </div>
 
