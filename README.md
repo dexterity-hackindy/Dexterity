@@ -1,5 +1,5 @@
 # Dexterity - Sign Language Translator
-#### Video Demo: <Link-When-Available>
+#### Video Demo: https://youtu.be/HPj7uLR2RW4?si=uKQXjFAVXsTlJ6R-
 #### Try it: https://dexterity-hackindy.github.io/dexterity
 
 > [!NOTE]
@@ -37,7 +37,7 @@ Copy: Use the Copy button to quickly save your text to your clipboard.
 ### Training Custom Signs
 Dexterity allows you to train the AI on your own specific hand shapes:
 
-Unlock Training: Click on the Training Data section. Note that this may require a password if the developers have locked the training panel for specific sessions.
+Unlock Training: Click on the Training Data section. Note that this may require a password if the developers have locked the training panel for specific sessions. For testing, the password set is 'dexterity'.
 
 Add Samples: Select a label (like "A" or a "Custom" word), perform the sign, and click Save Sample.
 
